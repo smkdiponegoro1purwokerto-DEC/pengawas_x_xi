@@ -104,6 +104,8 @@
     }
     .badge-x { background: #0284c7; }
     .badge-xi { background: #7c3aed; }
+    .badge-x-ink { background: #059669; }
+    .badge-xi-ink { background: #d97706; }
     
     .loading-info { text-align: center; padding: 30px; font-weight: bold; color: #1a73e8; }
     .empty-info { text-align: center; padding: 30px; color: #888; }
@@ -115,7 +117,7 @@
     <div class="header">
       <div>
         <h2>DIPSA EXAM CENTER</h2>
-        <p>Panel Monitoring Pengawas Ruang (Kelas X & XI)</p>
+        <p>Panel Monitoring Pengawas Ruang (Kelas X, XI & Inklusi)</p>
       </div>
       <div style="text-align: right;">
         <span id="last-update" style="font-size: 12px; color: #666;">Terakhir Diperbarui: -</span>
@@ -127,9 +129,11 @@
       <div class="form-group">
         <label>Tingkat Kelas</label>
         <select id="filter-tingkat" class="form-control">
-          <option value="SEMUA">Semua Tingkat (X & XI)</option>
-          <option value="X">Kelas X Saja</option>
-          <option value="XI">Kelas XI Saja</option>
+          <option value="SEMUA">Semua Kategori</option>
+          <option value="X">Kelas X Reguler</option>
+          <option value="XI">Kelas XI Reguler</option>
+          <option value="X_INK">Kelas X Inklusi</option>
+          <option value="XI_INK">Kelas XI Inklusi</option>
         </select>
       </div>
       <div class="form-group">
@@ -166,11 +170,19 @@
       </div>
       <div class="stat-card" style="border-left-color: #0284c7;">
         <h3 id="stat-kelas-x" style="color: #0284c7;">0</h3>
-        <p>Siswa Kelas X</p>
+        <p>Kelas X Reguler</p>
       </div>
       <div class="stat-card" style="border-left-color: #7c3aed;">
         <h3 id="stat-kelas-xi" style="color: #7c3aed;">0</h3>
-        <p>Siswa Kelas XI</p>
+        <p>Kelas XI Reguler</p>
+      </div>
+      <div class="stat-card" style="border-left-color: #059669;">
+        <h3 id="stat-kelas-x-ink" style="color: #059669;">0</h3>
+        <p>Kelas X Inklusi</p>
+      </div>
+      <div class="stat-card" style="border-left-color: #d97706;">
+        <h3 id="stat-kelas-xi-ink" style="color: #d97706;">0</h3>
+        <p>Kelas XI Inklusi</p>
       </div>
     </div>
 
@@ -180,7 +192,7 @@
         <thead>
           <tr>
             <th>Waktu Masuk</th>
-            <th>Tingkat</th>
+            <th>Kategori</th>
             <th>Nama Siswa</th>
             <th>Kelas</th>
             <th>Ruang</th>
@@ -196,9 +208,11 @@
   </div>
 
   <script>
-    // LINK APPSCRIPT
-    const URL_KELAS_X = "https://script.google.com/macros/s/AKfycbxtS3Bc94opvHSprJuTrLOK86Ay5QyZCZjznNVzgdzO6mc-MXejiqf9DnISKZjV0iJepA/exec";
-    const URL_KELAS_XI = "https://script.google.com/macros/s/AKfycbyM2FAeMltc-agqX7nYFS0YTun63UomUie4jUhMAtQTssvBROSvaGrjYRJgWbLza9cy/exec";
+    // 4 LINK APPSCRIPT TERBARU
+    const URL_KELAS_X      = "https://script.google.com/macros/s/AKfycbxvk6M3v3hBsJDQV3fppc8tPxINEK8oHrrhYy_Uu_i8A8eM2LC6rzDu9kX63N7n6Ggf/exec";
+    const URL_KELAS_XI     = "https://script.google.com/macros/s/AKfycbyom4dy-IS_1M_VD7SDujjis2ZRdZDvaZ1Gj5Z3-ezR6lGtSai_XjtksHt6_3OwLPrv/exec";
+    const URL_KELAS_X_INK  = "https://script.google.com/macros/s/AKfycbxtS3Bc94opvHSprJuTrLOK86Ay5QyZCZjznNVzgdzO6mc-MXejiqf9DnISKZjV0iJepA/exec";
+    const URL_KELAS_XI_INK = "https://script.google.com/macros/s/AKfycbyM2FAeMltc-agqX7nYFS0YTun63UomUie4jUhMAtQTssvBROSvaGrjYRJgWbLza9cy/exec";
 
     // Tarik data pertama kali saat halaman dibuka
     window.onload = function() {
@@ -219,7 +233,7 @@
       // Indikator Loading & Disable Tombol
       btnRefresh.disabled = true;
       btnRefresh.innerText = "⏳ Memuat...";
-      tbody.innerHTML = `<tr><td colspan="7" class="loading-info">Memuat data monitoring...</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" class="loading-info">Memuat data monitoring dari 4 database...</td></tr>`;
 
       const tingkat = document.getElementById("filter-tingkat").value;
       const ruang = document.getElementById("filter-ruang").value;
@@ -228,7 +242,7 @@
 
       const promises = [];
 
-      // Tarik dari Kelas X jika dipilih SEMUA atau X
+      // 1. Tarik Kelas X Reguler
       if (tingkat === "SEMUA" || tingkat === "X") {
         promises.push(
           fetch(`${URL_KELAS_X}?action=getMonitoring&ruang=${encodeURIComponent(ruang)}&tanggal=${encodeURIComponent(tanggal)}&waktuMulai=${encodeURIComponent(waktuMulai)}`)
@@ -238,7 +252,7 @@
         );
       }
 
-      // Tarik dari Kelas XI jika dipilih SEMUA atau XI
+      // 2. Tarik Kelas XI Reguler
       if (tingkat === "SEMUA" || tingkat === "XI") {
         promises.push(
           fetch(`${URL_KELAS_XI}?action=getMonitoring&ruang=${encodeURIComponent(ruang)}&tanggal=${encodeURIComponent(tanggal)}&waktuMulai=${encodeURIComponent(waktuMulai)}`)
@@ -248,11 +262,32 @@
         );
       }
 
+      // 3. Tarik Kelas X Inklusi
+      if (tingkat === "SEMUA" || tingkat === "X_INK") {
+        promises.push(
+          fetch(`${URL_KELAS_X_INK}?action=getMonitoring&ruang=${encodeURIComponent(ruang)}&tanggal=${encodeURIComponent(tanggal)}&waktuMulai=${encodeURIComponent(waktuMulai)}`)
+            .then(res => res.json())
+            .then(res => (res.data || []).map(item => ({ ...item, tingkat: "X_INK" })))
+            .catch(() => [])
+        );
+      }
+
+      // 4. Tarik Kelas XI Inklusi
+      if (tingkat === "SEMUA" || tingkat === "XI_INK") {
+        promises.push(
+          fetch(`${URL_KELAS_XI_INK}?action=getMonitoring&ruang=${encodeURIComponent(ruang)}&tanggal=${encodeURIComponent(tanggal)}&waktuMulai=${encodeURIComponent(waktuMulai)}`)
+            .then(res => res.json())
+            .then(res => (res.data || []).map(item => ({ ...item, tingkat: "XI_INK" })))
+            .catch(() => [])
+        );
+      }
+
+      // Gabungkan hasil penarikan dari seluruh Apps Script
       Promise.all(promises).then(results => {
         let gabungan = [];
         results.forEach(arr => { gabungan = gabungan.concat(arr); });
 
-        // Urutkan berdasarkan waktu terbaru
+        // Urutkan berdasarkan waktu masuk terbaru
         gabungan.sort((a, b) => parseDateCustom(b.waktu) - parseDateCustom(a.waktu));
 
         tampilkanData(gabungan);
@@ -294,17 +329,28 @@
 
       let countX = 0;
       let countXI = 0;
+      let countXInk = 0;
+      let countXIInk = 0;
 
       if (data.length === 0) {
         tbody.innerHTML = `<tr><td colspan="7" class="empty-info">Belum ada aktivitas siswa untuk filter ini.</td></tr>`;
       } else {
         data.forEach(item => {
-          if (item.tingkat === "X") countX++;
-          if (item.tingkat === "XI") countXI++;
-
-          const badgeTingkat = item.tingkat === "X" 
-            ? `<span class="badge-tingkat badge-x">Kelas X</span>` 
-            : `<span class="badge-tingkat badge-xi">Kelas XI</span>`;
+          let badgeTingkat = "";
+          
+          if (item.tingkat === "X") {
+            countX++;
+            badgeTingkat = `<span class="badge-tingkat badge-x">Kelas X</span>`;
+          } else if (item.tingkat === "XI") {
+            countXI++;
+            badgeTingkat = `<span class="badge-tingkat badge-xi">Kelas XI</span>`;
+          } else if (item.tingkat === "X_INK") {
+            countXInk++;
+            badgeTingkat = `<span class="badge-tingkat badge-x-ink">X Inklusi</span>`;
+          } else if (item.tingkat === "XI_INK") {
+            countXIInk++;
+            badgeTingkat = `<span class="badge-tingkat badge-xi-ink">XI Inklusi</span>`;
+          }
 
           const tr = document.createElement("tr");
           tr.innerHTML = `
@@ -324,6 +370,8 @@
       document.getElementById("stat-total").innerText = data.length;
       document.getElementById("stat-kelas-x").innerText = countX;
       document.getElementById("stat-kelas-xi").innerText = countXI;
+      document.getElementById("stat-kelas-x-ink").innerText = countXInk;
+      document.getElementById("stat-kelas-xi-ink").innerText = countXIInk;
       
       const now = new Date();
       document.getElementById("last-update").innerText = "Terakhir Diperbarui: " + now.toLocaleTimeString('id-ID');
