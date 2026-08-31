@@ -8,7 +8,7 @@
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
     body { background-color: #f4f6f9; color: #333; padding: 20px; }
     
-    .container { max-width: 1200px; margin: 0 auto; }
+    .container { max-width: 1280px; margin: 0 auto; }
     
     .header {
       background: #ffffff;
@@ -106,6 +106,28 @@
     .badge-xi { background: #7c3aed; }
     .badge-x-ink { background: #059669; }
     .badge-xi-ink { background: #d97706; }
+
+    /* STYLING BADGE KAMERA */
+    .badge-kamera-on {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: bold;
+      background: #e0f2fe;
+      color: #0369a1;
+      border: 1px solid #bae6fd;
+    }
+    .badge-kamera-off {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: bold;
+      background: #fee2e2;
+      color: #b91c1c;
+      border: 1px solid #fca5a5;
+    }
     
     .loading-info { text-align: center; padding: 30px; font-weight: bold; color: #1a73e8; }
     .empty-info { text-align: center; padding: 30px; color: #888; }
@@ -197,11 +219,12 @@
             <th>Kelas</th>
             <th>Ruang</th>
             <th>Mata Pelajaran</th>
-            <th>Status</th>
+            <th>Status Ujian</th>
+            <th>Status Kamera</th>
           </tr>
         </thead>
         <tbody id="table-body">
-          <tr><td colspan="7" class="loading-info">Memuat data monitoring...</td></tr>
+          <tr><td colspan="8" class="loading-info">Memuat data monitoring...</td></tr>
         </tbody>
       </table>
     </div>
@@ -233,7 +256,7 @@
       // Indikator Loading & Disable Tombol
       btnRefresh.disabled = true;
       btnRefresh.innerText = "⏳ Memuat...";
-      tbody.innerHTML = `<tr><td colspan="7" class="loading-info">Memuat data monitoring dari 4 database...</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" class="loading-info">Memuat data monitoring dari 4 database...</td></tr>`;
 
       const tingkat = document.getElementById("filter-tingkat").value;
       const ruang = document.getElementById("filter-ruang").value;
@@ -333,7 +356,7 @@
       let countXIInk = 0;
 
       if (data.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="empty-info">Belum ada aktivitas siswa untuk filter ini.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" class="empty-info">Belum ada aktivitas siswa untuk filter ini.</td></tr>`;
       } else {
         data.forEach(item => {
           let badgeTingkat = "";
@@ -352,6 +375,15 @@
             badgeTingkat = `<span class="badge-tingkat badge-xi-ink">XI Inklusi</span>`;
           }
 
+          // Format Tampilan Status Kamera
+          let kameraStr = item.kamera || "KAMERA DITOLAK / ERROR";
+          let badgeKamera = "";
+          if (kameraStr.includes("AKTIF") || kameraStr.includes("ON")) {
+            badgeKamera = `<span class="badge-kamera-on">📷 AKTIF</span>`;
+          } else {
+            badgeKamera = `<span class="badge-kamera-off">🚫 NONAKTIF / BLOK</span>`;
+          }
+
           const tr = document.createElement("tr");
           tr.innerHTML = `
             <td>${item.waktu}</td>
@@ -359,8 +391,9 @@
             <td><strong>${item.nama}</strong></td>
             <td>${item.kelas}</td>
             <td>${item.ruang}</td>
-            <td>${item.mapel.replace(/_/g, ' ')}</td>
+            <td>${item.mapel ? item.mapel.replace(/_/g, ' ') : '-'}</td>
             <td><span class="badge-status">✅ ${item.status}</span></td>
+            <td>${badgeKamera}</td>
           `;
           tbody.appendChild(tr);
         });
