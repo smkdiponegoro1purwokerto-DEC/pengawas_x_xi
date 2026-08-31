@@ -122,7 +122,7 @@
       </div>
     </div>
 
-    <!-- FILTER RUANG, MAPEL & WAKTU SESI -->
+    <!-- FILTER RUANG, TANGGAL & JAM MULAI SESI -->
     <div class="filter-card">
       <div class="form-group">
         <label>Tingkat Kelas</label>
@@ -146,12 +146,12 @@
         </select>
       </div>
       <div class="form-group">
-        <label>Jam Mulai Sesi Ujian</label>
-        <input type="time" id="filter-waktu" class="form-control">
+        <label>Tanggal Ujian</label>
+        <input type="date" id="filter-tanggal" class="form-control">
       </div>
       <div class="form-group">
-        <label>Mata Pelajaran</label>
-        <input type="text" id="filter-mapel" class="form-control" placeholder="Ketik Mapel (opsional)">
+        <label>Jam Mulai Sesi Ujian</label>
+        <input type="time" id="filter-waktu" class="form-control">
       </div>
       <div>
         <button class="btn-refresh" id="btn-refresh-data" onclick="muatDataMonitoring()">🔄 Refresh Data</button>
@@ -202,6 +202,13 @@
 
     // Tarik data pertama kali saat halaman dibuka
     window.onload = function() {
+      // SET DEFAULT INPUT TANGGAL KE TANGGAL HARI INI (YYYY-MM-DD)
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const dd = String(today.getDate()).padStart(2, '0');
+      document.getElementById("filter-tanggal").value = `${yyyy}-${mm}-${dd}`;
+
       muatDataMonitoring();
     };
 
@@ -216,15 +223,15 @@
 
       const tingkat = document.getElementById("filter-tingkat").value;
       const ruang = document.getElementById("filter-ruang").value;
+      const tanggal = document.getElementById("filter-tanggal").value;
       const waktuMulai = document.getElementById("filter-waktu").value;
-      const mapel = document.getElementById("filter-mapel").value.trim();
 
       const promises = [];
 
       // Tarik dari Kelas X jika dipilih SEMUA atau X
       if (tingkat === "SEMUA" || tingkat === "X") {
         promises.push(
-          fetch(`${URL_KELAS_X}?action=getMonitoring&ruang=${encodeURIComponent(ruang)}&mapel=${encodeURIComponent(mapel)}&waktuMulai=${encodeURIComponent(waktuMulai)}`)
+          fetch(`${URL_KELAS_X}?action=getMonitoring&ruang=${encodeURIComponent(ruang)}&tanggal=${encodeURIComponent(tanggal)}&waktuMulai=${encodeURIComponent(waktuMulai)}`)
             .then(res => res.json())
             .then(res => (res.data || []).map(item => ({ ...item, tingkat: "X" })))
             .catch(() => [])
@@ -234,7 +241,7 @@
       // Tarik dari Kelas XI jika dipilih SEMUA atau XI
       if (tingkat === "SEMUA" || tingkat === "XI") {
         promises.push(
-          fetch(`${URL_KELAS_XI}?action=getMonitoring&ruang=${encodeURIComponent(ruang)}&mapel=${encodeURIComponent(mapel)}&waktuMulai=${encodeURIComponent(waktuMulai)}`)
+          fetch(`${URL_KELAS_XI}?action=getMonitoring&ruang=${encodeURIComponent(ruang)}&tanggal=${encodeURIComponent(tanggal)}&waktuMulai=${encodeURIComponent(waktuMulai)}`)
             .then(res => res.json())
             .then(res => (res.data || []).map(item => ({ ...item, tingkat: "XI" })))
             .catch(() => [])
