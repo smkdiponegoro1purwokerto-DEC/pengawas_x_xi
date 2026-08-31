@@ -32,7 +32,7 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.05);
       margin-bottom: 20px;
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: 15px;
       align-items: end;
     }
@@ -51,6 +51,7 @@
       transition: 0.2s;
       font-size: 14px;
       height: 40px;
+      width: 100%;
     }
     .btn-refresh:hover { background: #1557b0; }
     
@@ -120,7 +121,7 @@
       </div>
     </div>
 
-    <!-- FILTER RUANG & MAPEL -->
+    <!-- FILTER RUANG, MAPEL & WAKTU SESI -->
     <div class="filter-card">
       <div class="form-group">
         <label>Tingkat Kelas</label>
@@ -142,6 +143,10 @@
           <option value="Lab DKV">Lab DKV</option>
           <option value="Lab TSM">Lab TSM</option>
         </select>
+      </div>
+      <div class="form-group">
+        <label>Jam Mulai Sesi Ujian</label>
+        <input type="time" id="filter-waktu" class="form-control" onchange="muatDataMonitoring()">
       </div>
       <div class="form-group">
         <label>Mata Pelajaran</label>
@@ -205,6 +210,7 @@
     function muatDataMonitoring() {
       const tingkat = document.getElementById("filter-tingkat").value;
       const ruang = document.getElementById("filter-ruang").value;
+      const waktuMulai = document.getElementById("filter-waktu").value;
       const mapel = document.getElementById("filter-mapel").value.trim();
 
       const promises = [];
@@ -212,7 +218,7 @@
       // Tarik dari Kelas X jika dipilih SEMUA atau X
       if (tingkat === "SEMUA" || tingkat === "X") {
         promises.push(
-          fetch(`${URL_KELAS_X}?action=getMonitoring&ruang=${encodeURIComponent(ruang)}&mapel=${encodeURIComponent(mapel)}`)
+          fetch(`${URL_KELAS_X}?action=getMonitoring&ruang=${encodeURIComponent(ruang)}&mapel=${encodeURIComponent(mapel)}&waktuMulai=${encodeURIComponent(waktuMulai)}`)
             .then(res => res.json())
             .then(res => (res.data || []).map(item => ({ ...item, tingkat: "X" })))
             .catch(() => [])
@@ -222,7 +228,7 @@
       // Tarik dari Kelas XI jika dipilih SEMUA atau XI
       if (tingkat === "SEMUA" || tingkat === "XI") {
         promises.push(
-          fetch(`${URL_KELAS_XI}?action=getMonitoring&ruang=${encodeURIComponent(ruang)}&mapel=${encodeURIComponent(mapel)}`)
+          fetch(`${URL_KELAS_XI}?action=getMonitoring&ruang=${encodeURIComponent(ruang)}&mapel=${encodeURIComponent(mapel)}&waktuMulai=${encodeURIComponent(waktuMulai)}`)
             .then(res => res.json())
             .then(res => (res.data || []).map(item => ({ ...item, tingkat: "XI" })))
             .catch(() => [])
@@ -233,11 +239,34 @@
         let gabungan = [];
         results.forEach(arr => { gabungan = gabungan.concat(arr); });
 
-        // Urutkan berdasarkan waktu terbaru
-        gabungan.sort((a, b) => new Date(b.waktu) - new Date(a.waktu));
+        // Urutkan berdasarkan waktu terbaru (konversi dd/MM/yyyy HH:mm:ss ke objek Date yang valid)
+        gabungan.sort((a, b) => parseDateCustom(b.waktu) - parseDateCustom(a.waktu));
 
         tampilkanData(gabungan);
       });
+    }
+
+    // FUNGSI UTILITY: METODE KONVERSI TANGGAL DENGAN MENGAKOMODASI FORMAT INDONESIA "dd/MM/yyyy HH:mm:ss"
+    function parseDateCustom(dateStr) {
+      if (!dateStr) return new Date(0);
+      var parts = dateStr.toString().split(" ");
+      if (parts.length === 2) {
+        var dateParts = parts[0].split("/");
+        var timeParts = parts[1].split(":");
+        if (dateParts.length === 3 && timeParts.length >= 2) {
+          // Date constructor format: year, monthIndex (0-based), day, hours, minutes, seconds
+          return new Date(
+            parseInt(dateParts[2], 10),
+            parseInt(dateParts[1], 10) - 1,
+            parseInt(dateParts[0], 10),
+            parseInt(timeParts[0], 10),
+            parseInt(timeParts[1], 10),
+            timeParts[2] ? parseInt(timeParts[2], 10) : 0
+          );
+        }
+      }
+      var d = new Date(dateStr);
+      return isNaN(d.getTime()) ? new Date(0) : d;
     }
 
     function tampilkanData(data) {
