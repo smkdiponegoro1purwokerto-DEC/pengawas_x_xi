@@ -54,6 +54,7 @@
       width: 100%;
     }
     .btn-refresh:hover { background: #1557b0; }
+    .btn-refresh:disabled { background: #a5c7f9; cursor: not-allowed; }
     
     .stats-bar {
       display: flex;
@@ -125,7 +126,7 @@
     <div class="filter-card">
       <div class="form-group">
         <label>Tingkat Kelas</label>
-        <select id="filter-tingkat" class="form-control" onchange="muatDataMonitoring()">
+        <select id="filter-tingkat" class="form-control">
           <option value="SEMUA">Semua Tingkat (X & XI)</option>
           <option value="X">Kelas X Saja</option>
           <option value="XI">Kelas XI Saja</option>
@@ -133,7 +134,7 @@
       </div>
       <div class="form-group">
         <label>Ruang Ujian</label>
-        <select id="filter-ruang" class="form-control" onchange="muatDataMonitoring()">
+        <select id="filter-ruang" class="form-control">
           <option value="SEMUA">Semua Ruang</option>
           <option value="Ruang 1">Ruang 1</option>
           <option value="Ruang 2">Ruang 2</option>
@@ -146,14 +147,14 @@
       </div>
       <div class="form-group">
         <label>Jam Mulai Sesi Ujian</label>
-        <input type="time" id="filter-waktu" class="form-control" onchange="muatDataMonitoring()">
+        <input type="time" id="filter-waktu" class="form-control">
       </div>
       <div class="form-group">
         <label>Mata Pelajaran</label>
-        <input type="text" id="filter-mapel" class="form-control" placeholder="Ketik Mapel (opsional)" onkeyup="muatDataMonitoring()">
+        <input type="text" id="filter-mapel" class="form-control" placeholder="Ketik Mapel (opsional)">
       </div>
       <div>
-        <button class="btn-refresh" onclick="muatDataMonitoring()">🔄 Refresh Data</button>
+        <button class="btn-refresh" id="btn-refresh-data" onclick="muatDataMonitoring()">🔄 Refresh Data</button>
       </div>
     </div>
 
@@ -199,15 +200,20 @@
     const URL_KELAS_X = "https://script.google.com/macros/s/AKfycbxtS3Bc94opvHSprJuTrLOK86Ay5QyZCZjznNVzgdzO6mc-MXejiqf9DnISKZjV0iJepA/exec";
     const URL_KELAS_XI = "https://script.google.com/macros/s/AKfycbyM2FAeMltc-agqX7nYFS0YTun63UomUie4jUhMAtQTssvBROSvaGrjYRJgWbLza9cy/exec";
 
-    let autoRefreshInterval = null;
-
+    // Tarik data pertama kali saat halaman dibuka
     window.onload = function() {
       muatDataMonitoring();
-      // Auto-refresh data setiap 10 detik
-      autoRefreshInterval = setInterval(muatDataMonitoring, 10000);
     };
 
     function muatDataMonitoring() {
+      const btnRefresh = document.getElementById("btn-refresh-data");
+      const tbody = document.getElementById("table-body");
+      
+      // Indikator Loading & Disable Tombol
+      btnRefresh.disabled = true;
+      btnRefresh.innerText = "⏳ Memuat...";
+      tbody.innerHTML = `<tr><td colspan="7" class="loading-info">Memuat data monitoring...</td></tr>`;
+
       const tingkat = document.getElementById("filter-tingkat").value;
       const ruang = document.getElementById("filter-ruang").value;
       const waktuMulai = document.getElementById("filter-waktu").value;
@@ -239,14 +245,21 @@
         let gabungan = [];
         results.forEach(arr => { gabungan = gabungan.concat(arr); });
 
-        // Urutkan berdasarkan waktu terbaru (konversi dd/MM/yyyy HH:mm:ss ke objek Date yang valid)
+        // Urutkan berdasarkan waktu terbaru
         gabungan.sort((a, b) => parseDateCustom(b.waktu) - parseDateCustom(a.waktu));
 
         tampilkanData(gabungan);
+        
+        // Kembalikan status tombol
+        btnRefresh.disabled = false;
+        btnRefresh.innerText = "🔄 Refresh Data";
+      }).catch(() => {
+        btnRefresh.disabled = false;
+        btnRefresh.innerText = "🔄 Refresh Data";
       });
     }
 
-    // FUNGSI UTILITY: METODE KONVERSI TANGGAL DENGAN MENGAKOMODASI FORMAT INDONESIA "dd/MM/yyyy HH:mm:ss"
+    // FUNGSI UTILITY: METODE KONVERSI TANGGAL FORMAT INDONESIA "dd/MM/yyyy HH:mm:ss"
     function parseDateCustom(dateStr) {
       if (!dateStr) return new Date(0);
       var parts = dateStr.toString().split(" ");
@@ -254,7 +267,6 @@
         var dateParts = parts[0].split("/");
         var timeParts = parts[1].split(":");
         if (dateParts.length === 3 && timeParts.length >= 2) {
-          // Date constructor format: year, monthIndex (0-based), day, hours, minutes, seconds
           return new Date(
             parseInt(dateParts[2], 10),
             parseInt(dateParts[1], 10) - 1,
