@@ -56,6 +56,23 @@
     .btn-refresh:hover { background: #1557b0; }
     .btn-refresh:disabled { background: #a5c7f9; cursor: not-allowed; }
     
+    /* TOMBOL KHUSUS MENU GURU */
+    .btn-guru {
+      background: #28a745;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.2s;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-guru:hover { background: #218838; }
+
     .stats-bar {
       display: flex;
       gap: 15px;
@@ -141,8 +158,11 @@
         <h2>DIPSA EXAM CENTER</h2>
         <p>Panel Monitoring Pengawas Ruang (Kelas X, XI & Inklusi)</p>
       </div>
-      <div style="text-align: right;">
+      <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
         <span id="last-update" style="font-size: 12px; color: #666;">Terakhir Diperbarui: -</span>
+        <button class="btn-guru" onclick="window.location.href='rekap_nilai_guru.html'">
+          📊 Rekap Nilai Guru
+        </button>
       </div>
     </div>
 
