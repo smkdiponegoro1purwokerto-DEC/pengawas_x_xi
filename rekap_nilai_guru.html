@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DIPSA EXAM CENTER - Portal Rekap Nilai Guru</title>
+  <!-- PUSTAKA EXPORT EXCEL (SHEETJS) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    body { background-color: #f4f6f9; color: #333; padding: 20px; }
+    .container { max-width: 1200px; margin: 0 auto; }
+    
+    .card { background: #ffffff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
+    .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eef2f5; padding-bottom: 15px; margin-bottom: 20px; }
+    .header h2 { color: #1a73e8; font-size: 22px; }
+    
+    /* FORM LOGIN GURU */
+    #screen-login { max-width: 400px; margin: 80px auto; text-align: center; }
+    .form-group { margin-bottom: 15px; text-align: left; }
+    .form-group label { display: block; font-size: 13px; font-weight: bold; color: #555; margin-bottom: 5px; }
+    .form-control { width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; outline: none; }
+    .form-control:focus { border-color: #1a73e8; }
+    
+    .btn-primary { background: #1a73e8; color: white; border: none; padding: 10px 18px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 14px; width: 100%; }
+    .btn-primary:hover { background: #1557b0; }
+    .btn-primary:disabled { background: #a5c7f9; cursor: not-allowed; }
+    
+    .btn-success { background: #28a745; color: white; border: none; padding: 10px 18px; border-radius: 6px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 14px; }
+    .btn-success:hover { background: #218838; }
+    
+    .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; align-items: end; margin-bottom: 20px; }
+    
+    .table-responsive { background: white; border-radius: 8px; overflow-x: auto; margin-top: 15px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; text-align: left; }
+    th { background: #f8fafc; color: #475569; padding: 12px 15px; border-bottom: 2px solid #e2e8f0; font-weight: 600; }
+    td { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; }
+    tr:hover { background: #f8fafc; }
+    
+    .badge-nilai { font-weight: bold; color: #1a73e8; font-size: 15px; }
+    .badge-warning { color: #dc3545; font-size: 12px; font-weight: bold; }
+    .screen { display: none; }
+    .screen.active { display: block; }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    
+    <!-- LAYAR 1: LOGIN GURU -->
+    <div class="screen active" id="screen-login">
+      <div class="card">
+        <h2 style="margin-bottom: 5px;">Portal Rekap Nilai Guru</h2>
+        <p style="color: #666; font-size: 13px; margin-bottom: 20px;">Masukkan Username dan Password Guru</p>
+        <form onsubmit="prosesLoginGuru(event)">
+          <div class="form-group">
+            <label>Username</label>
+            <input type="text" id="user-guru" class="form-control" placeholder="Masukkan Username" required autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="pass-guru" class="form-control" placeholder="Masukkan Password" required>
+          </div>
+          <button type="submit" id="btn-login" class="btn-primary">Masuk Portal</button>
+        </form>
+        <div id="loading-login" style="display:none; color:#1a73e8; font-size:13px; margin-top:10px; font-weight:bold;">Memeriksa akun guru...</div>
+        <div id="err-login" style="color: #dc3545; font-size: 13px; margin-top: 10px;"></div>
+      </div>
+    </div>
+
+    <!-- LAYAR 2: DASHBOARD REKAP NILAI -->
+    <div class="screen" id="screen-dashboard">
+      <div class="card">
+        <div class="header">
+          <div>
+            <h2>Rekapitulasi Nilai Ujian Siswa</h2>
+            <p style="color: #666; font-size: 13px;" id="label-welcome">Selamat datang, Guru</p>
+          </div>
+          <button class="btn-primary" style="background: #6c757d; width: auto;" onclick="keluarPortal()">Keluar</button>
+        </div>
+
+        <!-- FILTER TINGKAT & MAPEL -->
+        <div class="filter-grid">
+          <div class="form-group">
+            <label>Kategori Kelas</label>
+            <select id="filter-tingkat" class="form-control" onchange="updateOpsiMapel()">
+              <option value="X">Kelas X Reguler</option>
+              <option value="XI">Kelas XI Reguler</option>
+              <option value="X_INK">Kelas X Inklusi</option>
+              <option value="XI_INK">Kelas XI Inklusi</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Mata Pelajaran</label>
+            <select id="filter-mapel" class="form-control">
+              <!-- Opsi Mapel Diisi Otomatis oleh JavaScript -->
+            </select>
+          </div>
+          <div>
+            <button class="btn-primary" id="btn-cari" onclick="tampilkanNilai()">🔍 Cari Nilai</button>
+          </div>
+          <div>
+            <button class="btn-success" id="btn-export" onclick="exportToExcel()" style="width: 100%; display: none;">📥 Download Excel</button>
+          </div>
+        </div>
+
+        <!-- TABEL HASIL NILAI -->
+        <div class="table-responsive">
+          <table id="table-nilai">
+            <thead>
+              <tr>
+                <th>No</th>
+                <th>Waktu Selesai</th>
+                <th>NIS</th>
+                <th>Nama Siswa</th>
+                <th>Kelas</th>
+                <th>Nilai (0-100)</th>
+                <th>Catatan Pelanggaran</th>
+              </tr>
+            </thead>
+            <tbody id="body-nilai">
+              <tr><td colspan="7" style="text-align:center; padding: 20px; color: #888;">Pilih Kategori Kelas & Mapel lalu klik 'Cari Nilai'.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // URL DATABASE GURU
+    const URL_GURU = "https://script.google.com/macros/s/AKfycbzV8m8z-opuUGnutO3k5-vVytsa9Xu_WJ7uuoWbe4zeH09_Hqe69LQDEK2UWmcCCDEs/exec";
+
+    // 4 ENDPOINT DATABASE UJIAN
+    const ENDPOINTS = {
+      "X": "https://script.google.com/macros/s/AKfycbxvk6M3v3hBsJDQV3fppc8tPxINEK8oHrrhYy_Uu_i8A8eM2LC6rzDu9kX63N7n6Ggf/exec",
+      "XI": "https://script.google.com/macros/s/AKfycbyom4dy-IS_1M_VD7SDujjis2ZRdZDvaZ1Gj5Z3-ezR6lGtSai_XjtksHt6_3OwLPrv/exec",
+      "X_INK": "https://script.google.com/macros/s/AKfycbxtS3Bc94opvHSprJuTrLOK86Ay5QyZCZjznNVzgdzO6mc-MXejiqf9DnISKZjV0iJepA/exec",
+      "XI_INK": "https://script.google.com/macros/s/AKfycbyM2FAeMltc-agqX7nYFS0YTun63UomUie4jUhMAtQTssvBROSvaGrjYRJgWbLza9cy/exec"
+    };
+
+    // DAFTAR MAPEL SESUAI TINGKAT KELAS
+    const LIST_MAPEL = {
+      "X": ["Bahasa_Indonesia", "PAI", "Informatika", "Matematika", "Sejarah", "Dasar_DKV", "Dasar_MP", "Dasar_TSM", "Bahasa_Inggris", "Penjasorkes", "Pancasila", "PIPAS", "Seni_Budaya", "KKA", "Basa_Jawa"],
+      "XI": ["Bahasa_Indonesia", "PAI", "Matematika", "Sejarah", "Bahasa_Inggris", "Penjasorkes", "Pancasila", "Pilihan_DKV", "Sarprashumas_MP", "Kreativitas_Inovasi_dan_Kewirausahaan", "Basa_Jawa"],
+      "X_INK": ["Bahasa_Indonesia", "PAI", "Informatika", "Matematika", "Sejarah", "Dasar_DKV", "Dasar_MP", "Dasar_TSM", "Bahasa_Inggris", "Penjasorkes", "Pancasila", "PIPAS", "Seni_Budaya", "KKA", "Basa_Jawa"],
+      "XI_INK": ["Bahasa_Indonesia", "PAI", "Matematika", "Sejarah", "Bahasa_Inggris", "Penjasorkes", "Pancasila", "Pilihan_DKV", "Sarprashumas_MP", "Kreativitas_Inovasi_dan_Kewirausahaan", "Basa_Jawa"]
+    };
+
+    let guruAktif = null;
+    let currentDataNilai = [];
+
+    window.onload = function() {
+      updateOpsiMapel();
+    };
+
+    function updateOpsiMapel() {
+      const tingkat = document.getElementById("filter-tingkat").value;
+      const selectMapel = document.getElementById("filter-mapel");
+      selectMapel.innerHTML = "";
+
+      const mapelArr = LIST_MAPEL[tingkat] || [];
+      mapelArr.forEach(m => {
+        const opt = document.createElement("option");
+        opt.value = m;
+        opt.innerText = m.replace(/_/g, ' ');
+        selectMapel.appendChild(opt);
+      });
+    }
+
+    function prosesLoginGuru(e) {
+      e.preventDefault();
+      const u = document.getElementById("user-guru").value.trim();
+      const p = document.getElementById("pass-guru").value.trim();
+      const btn = document.getElementById("btn-login");
+      const err = document.getElementById("err-login");
+      const loading = document.getElementById("loading-login");
+
+      btn.disabled = true;
+      err.innerText = "";
+      loading.style.display = "block";
+
+      fetch(`${URL_GURU}?action=loginGuru&username=${encodeURIComponent(u)}&password=${encodeURIComponent(p)}`)
+        .then(res => res.json())
+        .then(data => {
+          loading.style.display = "none";
+          btn.disabled = false;
+
+          if (data.status === "success") {
+            guruAktif = data.guru;
+            document.getElementById("label-welcome").innerText = `DIPSA EXAM CENTER - Pengajar: ${guruAktif.nama}`;
+            document.getElementById("screen-login").classList.remove("active");
+            document.getElementById("screen-dashboard").classList.add("active");
+          } else {
+            err.innerText = data.message;
+          }
+        })
+        .catch(() => {
+          loading.style.display = "none";
+          btn.disabled = false;
+          err.innerText = "Gagal terhubung ke database Guru!";
+        });
+    }
+
+    function keluarPortal() {
+      guruAktif = null;
+      document.getElementById("screen-dashboard").classList.remove("active");
+      document.getElementById("screen-login").classList.add("active");
+      document.getElementById("user-guru").value = "";
+      document.getElementById("pass-guru").value = "";
+      document.getElementById("err-login").innerText = "";
+    }
+
+    function tampilkanNilai() {
+      const tingkat = document.getElementById("filter-tingkat").value;
+      const mapel = document.getElementById("filter-mapel").value;
+      const tbody = document.getElementById("body-nilai");
+      const btnExport = document.getElementById("btn-export");
+      const btnCari = document.getElementById("btn-cari");
+
+      btnCari.disabled = true;
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:20px; color:#1a73e8; font-weight:bold;">⏳ Mengambil data nilai...</td></tr>`;
+      btnExport.style.display = "none";
+
+      const url = `${ENDPOINTS[tingkat]}?action=getNilai&mapel=${encodeURIComponent(mapel)}`;
+
+      fetch(url)
+        .then(res => res.json())
+        .then(res => {
+          btnCari.disabled = false;
+          currentDataNilai = res.data || [];
+          tbody.innerHTML = "";
+
+          if (currentDataNilai.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:20px; color:#888;">Belum ada data nilai untuk mata pelajaran ini.</td></tr>`;
+            return;
+          }
+
+          currentDataNilai.forEach((item, idx) => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+              <td>${idx + 1}</td>
+              <td>${item.waktu}</td>
+              <td>${item.nis || '-'}</td>
+              <td><strong>${item.nama}</strong></td>
+              <td>${item.kelas}</td>
+              <td><span class="badge-nilai">${item.nilai}</span></td>
+              <td><span class="${item.pelanggaran !== 'Tidak Ada' && item.pelanggaran !== 'Selesai Normal' ? 'badge-warning' : ''}">${item.pelanggaran}</span></td>
+            `;
+            tbody.appendChild(tr);
+          });
+
+          btnExport.style.display = "block";
+        })
+        .catch(() => {
+          btnCari.disabled = false;
+          tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:20px; color:#dc3545;">Gagal mengambil data nilai!</td></tr>`;
+        });
+    }
+
+    function exportToExcel() {
+      if (currentDataNilai.length === 0) return;
+
+      const mapel = document.getElementById("filter-mapel").value;
+      const tingkat = document.getElementById("filter-tingkat").value;
+
+      // 1. Unduh File Excel ke Komputer Guru
+      const excelData = currentDataNilai.map((item, index) => ({
+        "No": index + 1,
+        "Waktu Selesai": item.waktu,
+        "NIS": item.nis,
+        "Nama Siswa": item.nama,
+        "Kelas": item.kelas,
+        "Mata Pelajaran": item.mapel.replace(/_/g, ' '),
+        "Nilai": item.nilai,
+        "Catatan Pelanggaran": item.pelanggaran
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(excelData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Nilai");
+
+      const filename = `Nilai_${mapel}_${tingkat}.xlsx`;
+      XLSX.writeFile(workbook, filename);
+
+      // 2. Kirim Log Audit ke Sheet Report_Download
+      const payloadLog = {
+        namaGuru: guruAktif ? guruAktif.nama : "Guru",
+        tingkat: tingkat,
+        mapel: mapel,
+        jumlahSiswa: currentDataNilai.length
+      };
+
+      fetch(URL_GURU, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payloadLog)
+      }).catch(err => console.log("Gagal mencatat log download:", err));
+    }
+  </script>
+
+</body>
+</html>
