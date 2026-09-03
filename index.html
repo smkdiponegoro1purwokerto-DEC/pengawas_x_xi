@@ -56,6 +56,7 @@
     .btn-refresh:hover { background: #1557b0; }
     .btn-refresh:disabled { background: #a5c7f9; cursor: not-allowed; }
     
+    /* TOMBOL KHUSUS MENU GURU & PRAKTIK */
     .btn-guru {
       background: #28a745;
       color: white;
@@ -71,6 +72,22 @@
       gap: 6px;
     }
     .btn-guru:hover { background: #218838; }
+
+    .btn-praktik {
+      background: #fd7e14;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.2s;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-praktik:hover { background: #e8590c; }
 
     .stats-bar {
       display: flex;
@@ -123,6 +140,7 @@
     .badge-x-ink { background: #059669; }
     .badge-xi-ink { background: #d97706; }
 
+    /* STYLING BADGE KAMERA */
     .badge-kamera-on {
       display: inline-block;
       padding: 4px 10px;
@@ -156,10 +174,13 @@
         <h2>DIPSA EXAM CENTER</h2>
         <p>Panel Monitoring Pengawas Ruang (Kelas X, XI & Inklusi)</p>
       </div>
-      <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-        <span id="last-update" style="font-size: 12px; color: #666;">Terakhir Diperbarui: -</span>
+      <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <span id="last-update" style="font-size: 12px; color: #666; margin-right: 5px;">Terakhir Diperbarui: -</span>
         <button class="btn-guru" onclick="window.location.href='rekap_nilai_guru.html'">
           📊 Rekap Nilai Guru
+        </button>
+        <button class="btn-praktik" onclick="window.location.href='https://smkdiponegoro1purwokerto-dec.github.io/portal_praktik/admin.html'">
+          🛠️ Admin Praktik
         </button>
       </div>
     </div>
@@ -194,7 +215,7 @@
         <input type="date" id="filter-tanggal" class="form-control">
       </div>
       <div class="form-group">
-        <label>Jam Mulai Sesi Ujian (Opsional)</label>
+        <label>Jam Mulai Sesi Ujian</label>
         <input type="time" id="filter-waktu" class="form-control">
       </div>
       <div>
@@ -249,18 +270,20 @@
   </div>
 
   <script>
+    // 4 LINK APPSCRIPT TERBARU
     const URL_KELAS_X      = "https://script.google.com/macros/s/AKfycbz7IDkbDuKrdwhjvYmi2x5avfx3voNUOaPmFtU3112xeNZ6n61v_abKAmyLxlkIPjvT/exec";
     const URL_KELAS_XI     = "https://script.google.com/macros/s/AKfycbzVVI1lQHXR9YohwEWD1tTvmtQ-UdSXH7tcEi95849zb5kNuPZbFOogdnVXfTLGgdR1/exec";
     const URL_KELAS_X_INK  = "https://script.google.com/macros/s/AKfycbwED2KT8qEGQ-tloK8NUoD3pfwnEvgFqb-p8a8Hafrr06z2aGDvmwRFHSyuIMD89kBdWQ/exec";
     const URL_KELAS_XI_INK = "https://script.google.com/macros/s/AKfycbyuEZ8LGBTPpXQSt-boaT8x591Q0upjLK_b0EhaBroVLicIHlUUaQBFiKhc4hdY0P_q/exec";
 
+    // Tarik data pertama kali saat halaman dibuka
     window.onload = function() {
+      // SET DEFAULT INPUT TANGGAL KE TANGGAL HARI INI (YYYY-MM-DD)
       const today = new Date();
       const yyyy = today.getFullYear();
       const mm = String(today.getMonth() + 1).padStart(2, '0');
       const dd = String(today.getDate()).padStart(2, '0');
       document.getElementById("filter-tanggal").value = `${yyyy}-${mm}-${dd}`;
-      document.getElementById("filter-waktu").value = "";
 
       muatDataMonitoring();
     };
@@ -269,6 +292,7 @@
       const btnRefresh = document.getElementById("btn-refresh-data");
       const tbody = document.getElementById("table-body");
       
+      // Indikator Loading & Disable Tombol
       btnRefresh.disabled = true;
       btnRefresh.innerText = "⏳ Memuat...";
       tbody.innerHTML = `<tr><td colspan="8" class="loading-info">Memuat data monitoring dari 4 database...</td></tr>`;
@@ -280,6 +304,7 @@
 
       const promises = [];
 
+      // 1. Tarik Kelas X Reguler
       if (tingkat === "SEMUA" || tingkat === "X") {
         promises.push(
           fetch(`${URL_KELAS_X}?action=getMonitoring&ruang=${encodeURIComponent(ruang)}&tanggal=${encodeURIComponent(tanggal)}&waktuMulai=${encodeURIComponent(waktuMulai)}`)
@@ -289,6 +314,7 @@
         );
       }
 
+      // 2. Tarik Kelas XI Reguler
       if (tingkat === "SEMUA" || tingkat === "XI") {
         promises.push(
           fetch(`${URL_KELAS_XI}?action=getMonitoring&ruang=${encodeURIComponent(ruang)}&tanggal=${encodeURIComponent(tanggal)}&waktuMulai=${encodeURIComponent(waktuMulai)}`)
@@ -298,6 +324,7 @@
         );
       }
 
+      // 3. Tarik Kelas X Inklusi
       if (tingkat === "SEMUA" || tingkat === "X_INK") {
         promises.push(
           fetch(`${URL_KELAS_X_INK}?action=getMonitoring&ruang=${encodeURIComponent(ruang)}&tanggal=${encodeURIComponent(tanggal)}&waktuMulai=${encodeURIComponent(waktuMulai)}`)
@@ -307,6 +334,7 @@
         );
       }
 
+      // 4. Tarik Kelas XI Inklusi
       if (tingkat === "SEMUA" || tingkat === "XI_INK") {
         promises.push(
           fetch(`${URL_KELAS_XI_INK}?action=getMonitoring&ruang=${encodeURIComponent(ruang)}&tanggal=${encodeURIComponent(tanggal)}&waktuMulai=${encodeURIComponent(waktuMulai)}`)
@@ -316,14 +344,17 @@
         );
       }
 
+      // Gabungkan hasil penarikan dari seluruh Apps Script
       Promise.all(promises).then(results => {
         let gabungan = [];
         results.forEach(arr => { gabungan = gabungan.concat(arr); });
 
+        // Urutkan berdasarkan waktu masuk terbaru
         gabungan.sort((a, b) => parseDateCustom(b.waktu) - parseDateCustom(a.waktu));
 
         tampilkanData(gabungan);
         
+        // Kembalikan status tombol
         btnRefresh.disabled = false;
         btnRefresh.innerText = "🔄 Refresh Data";
       }).catch(() => {
@@ -332,28 +363,25 @@
       });
     }
 
+    // FUNGSI UTILITY: METODE KONVERSI TANGGAL FORMAT INDONESIA "dd/MM/yyyy HH:mm:ss"
     function parseDateCustom(dateStr) {
       if (!dateStr) return new Date(0);
-      var str = dateStr.toString().trim();
-      var parts = str.split(" ");
-      
+      var parts = dateStr.toString().split(" ");
       if (parts.length === 2) {
         var dateParts = parts[0].split("/");
         var timeParts = parts[1].split(":");
-        
         if (dateParts.length === 3 && timeParts.length >= 2) {
-          var day = parseInt(dateParts[0], 10);
-          var month = parseInt(dateParts[1], 10) - 1;
-          var year = parseInt(dateParts[2], 10);
-          var hours = parseInt(timeParts[0], 10);
-          var minutes = parseInt(timeParts[1], 10);
-          var seconds = timeParts[2] ? parseInt(timeParts[2], 10) : 0;
-          
-          return new Date(year, month, day, hours, minutes, seconds);
+          return new Date(
+            parseInt(dateParts[2], 10),
+            parseInt(dateParts[1], 10) - 1,
+            parseInt(dateParts[0], 10),
+            parseInt(timeParts[0], 10),
+            parseInt(timeParts[1], 10),
+            timeParts[2] ? parseInt(timeParts[2], 10) : 0
+          );
         }
       }
-      
-      var d = new Date(str);
+      var d = new Date(dateStr);
       return isNaN(d.getTime()) ? new Date(0) : d;
     }
 
@@ -361,7 +389,10 @@
       const tbody = document.getElementById("table-body");
       tbody.innerHTML = "";
 
-      let countX = 0, countXI = 0, countXInk = 0, countXIInk = 0;
+      let countX = 0;
+      let countXI = 0;
+      let countXInk = 0;
+      let countXIInk = 0;
 
       if (data.length === 0) {
         tbody.innerHTML = `<tr><td colspan="8" class="empty-info">Belum ada aktivitas siswa untuk filter ini.</td></tr>`;
@@ -383,6 +414,7 @@
             badgeTingkat = `<span class="badge-tingkat badge-xi-ink">XI Inklusi</span>`;
           }
 
+          // Format Tampilan Status Kamera
           let kameraStr = item.kamera || "KAMERA DITOLAK / ERROR";
           let badgeKamera = "";
           if (kameraStr.includes("AKTIF") || kameraStr.includes("ON")) {
@@ -406,6 +438,7 @@
         });
       }
 
+      // Update Statistik & Jam Refresh
       document.getElementById("stat-total").innerText = data.length;
       document.getElementById("stat-kelas-x").innerText = countX;
       document.getElementById("stat-kelas-xi").innerText = countXI;
