@@ -56,7 +56,7 @@
     .btn-refresh:hover { background: #1557b0; }
     .btn-refresh:disabled { background: #a5c7f9; cursor: not-allowed; }
     
-    /* TOMBOL KHUSUS MENU GURU & PRAKTIK */
+    /* TOMBOL KHUSUS MENU GURU */
     .btn-guru {
       background: #28a745;
       color: white;
@@ -72,22 +72,6 @@
       gap: 6px;
     }
     .btn-guru:hover { background: #218838; }
-
-    .btn-praktik {
-      background: #fd7e14;
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 6px;
-      font-weight: bold;
-      cursor: pointer;
-      transition: 0.2s;
-      font-size: 13px;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .btn-praktik:hover { background: #e8590c; }
 
     .stats-bar {
       display: flex;
@@ -174,13 +158,10 @@
         <h2>DIPSA EXAM CENTER</h2>
         <p>Panel Monitoring Pengawas Ruang (Kelas X, XI & Inklusi)</p>
       </div>
-      <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-        <span id="last-update" style="font-size: 12px; color: #666; margin-right: 5px;">Terakhir Diperbarui: -</span>
+      <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+        <span id="last-update" style="font-size: 12px; color: #666;">Terakhir Diperbarui: -</span>
         <button class="btn-guru" onclick="window.location.href='rekap_nilai_guru.html'">
           📊 Rekap Nilai Guru
-        </button>
-        <button class="btn-praktik" onclick="window.location.href='https://smkdiponegoro1purwokerto-dec.github.io/portal_praktik/admin.html'">
-          🛠️ Admin Praktik
         </button>
       </div>
     </div>
