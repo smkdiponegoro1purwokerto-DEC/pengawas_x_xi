@@ -56,7 +56,6 @@
     .btn-refresh:hover { background: #1557b0; }
     .btn-refresh:disabled { background: #a5c7f9; cursor: not-allowed; }
     
-    /* TOMBOL KHUSUS MENU GURU */
     .btn-guru {
       background: #28a745;
       color: white;
@@ -72,6 +71,22 @@
       gap: 6px;
     }
     .btn-guru:hover { background: #218838; }
+
+    .btn-praktik {
+      background: #fd7e14;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.2s;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-praktik:hover { background: #e8590c; }
 
     .stats-bar {
       display: flex;
@@ -95,341 +110,93 @@
       background: white;
       border-radius: 10px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-      overflow-x: auto;
-    }
-    table { width: 100%; border-collapse: collapse; font-size: 14px; text-align: left; }
-    th { background: #f8fafc; color: #475569; padding: 12px 15px; border-bottom: 2px solid #e2e8f0; font-weight: 600; }
-    td { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; }
-    tr:hover { background: #f8fafc; }
-    
-    .badge-status {
-      display: inline-block;
-      padding: 4px 10px;
-      border-radius: 20px;
-      font-size: 11px;
-      font-weight: bold;
-      background: #dcfce7;
-      color: #15803d;
-    }
-    .badge-tingkat {
-      display: inline-block;
-      padding: 3px 8px;
-      border-radius: 4px;
-      font-size: 11px;
-      font-weight: bold;
-      color: white;
-    }
-    .badge-x { background: #0284c7; }
-    .badge-xi { background: #7c3aed; }
-    .badge-x-ink { background: #059669; }
-    .badge-xi-ink { background: #d97706; }
+Penyebab utama data siswa tidak muncul adalah logika filter waktu pada Apps Script dan penanganan format jam di JavaScript HTML. 
 
-    /* STYLING BADGE KAMERA */
-    .badge-kamera-on {
-      display: inline-block;
-      padding: 4px 10px;
-      border-radius: 20px;
-      font-size: 11px;
-      font-weight: bold;
-      background: #e0f2fe;
-      color: #0369a1;
-      border: 1px solid #bae6fd;
+Pada tangkapan layar, filter **Jam Mulai Sesi Ujian** terisi 14.17. Pada Apps Script, kondisi filter waktu ditulis `passWaktu = waktuFilter === "" || jamMenitSiswa === "" || jamMenitSiswa >= waktuFilter;`. Karena waktu masuk siswa di spreadsheet berkisar antara 12:4x hingga 15:1x, siswa yang masuk sebelum jam 14:17 otomatis terfilter (hilang dari tabel). Selain itu, format jam `14.17` atau jam tanpa detik di spreadsheet sering kali membuat perbandingan string jam gagal.
+
+Berikut adalah perbaikannya agar data dapat tampil secara konsisten:
+
+---
+
+### 1. Perbaikan Kode Google Apps Script (`doGet`)
+
+Ganti bagian `action == "getMonitoring"` di Apps Script dengan kode berikut. Kode ini memperbaiki cara membaca tanggal/jam dari Google Sheets agar tidak terpengaruh perbedaan format `Date` dan `String`:
+
+```javascript
+  // 3. MONITORING
+  if (action == "getMonitoring") {
+    var ruangFilter = e.parameter.ruang ? cleanString(e.parameter.ruang) : "SEMUA";
+    var tglFilter = e.parameter.tanggal ? cleanString(e.parameter.tanggal) : "";
+    var waktuFilter = e.parameter.waktuMulai ? cleanString(e.parameter.waktuMulai).replace('.', ':') : "";
+    
+    var tglTargetStr = "";
+    if (tglFilter !== "") {
+      var tParts = tglFilter.split("-");
+      if (tParts.length === 3) {
+        // Mengubah format YYYY-MM-DD ke DD/MM/YYYY
+        tglTargetStr = ("0" + tParts[2]).slice(-2) + "/" + ("0" + tParts[1]).slice(-2) + "/" + tParts[0];
+      }
     }
-    .badge-kamera-off {
-      display: inline-block;
-      padding: 4px 10px;
-      border-radius: 20px;
-      font-size: 11px;
-      font-weight: bold;
-      background: #fee2e2;
-      color: #b91c1c;
-      border: 1px solid #fca5a5;
+
+    var sheetMonitoring = ss.getSheetByName("Monitoring");
+    if (!sheetMonitoring) {
+      return responseJSON({ status: "success", data: [] });
     }
     
-    .loading-info { text-align: center; padding: 30px; font-weight: bold; color: #1a73e8; }
-    .empty-info { text-align: center; padding: 30px; color: #888; }
-  </style>
-</head>
-<body>
-
-  <div class="container">
-    <div class="header">
-      <div>
-        <h2>DIPSA EXAM CENTER</h2>
-        <p>Panel Monitoring Pengawas Ruang (Kelas X, XI & Inklusi)</p>
-      </div>
-      <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-        <span id="last-update" style="font-size: 12px; color: #666;">Terakhir Diperbarui: -</span>
-        <button class="btn-guru" onclick="window.location.href='rekap_nilai_guru.html'">
-          📊 Rekap Nilai Guru
-        </button>
-      </div>
-    </div>
-
-    <!-- FILTER RUANG, TANGGAL & JAM MULAI SESI -->
-    <div class="filter-card">
-      <div class="form-group">
-        <label>Tingkat Kelas</label>
-        <select id="filter-tingkat" class="form-control">
-          <option value="SEMUA">Semua Kategori</option>
-          <option value="X">Kelas X Reguler</option>
-          <option value="XI">Kelas XI Reguler</option>
-          <option value="X_INK">Kelas X Inklusi</option>
-          <option value="XI_INK">Kelas XI Inklusi</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Ruang Ujian</label>
-        <select id="filter-ruang" class="form-control">
-          <option value="SEMUA">Semua Ruang</option>
-          <option value="Ruang 1">Ruang 1</option>
-          <option value="Ruang 2">Ruang 2</option>
-          <option value="Ruang 3">Ruang 3</option>
-          <option value="Ruang 4">Ruang 4</option>
-          <option value="Ruang 5">Ruang 5</option>
-          <option value="Lab DKV">Lab DKV</option>
-          <option value="Lab TSM">Lab TSM</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Tanggal Ujian</label>
-        <input type="date" id="filter-tanggal" class="form-control">
-      </div>
-      <div class="form-group">
-        <label>Jam Mulai Sesi Ujian</label>
-        <input type="time" id="filter-waktu" class="form-control">
-      </div>
-      <div>
-        <button class="btn-refresh" id="btn-refresh-data" onclick="muatDataMonitoring()">🔄 Refresh Data</button>
-      </div>
-    </div>
-
-    <!-- STATISTIK RINGKAS -->
-    <div class="stats-bar">
-      <div class="stat-card">
-        <h3 id="stat-total">0</h3>
-        <p>Total Siswa Akses Token</p>
-      </div>
-      <div class="stat-card" style="border-left-color: #0284c7;">
-        <h3 id="stat-kelas-x" style="color: #0284c7;">0</h3>
-        <p>Kelas X Reguler</p>
-      </div>
-      <div class="stat-card" style="border-left-color: #7c3aed;">
-        <h3 id="stat-kelas-xi" style="color: #7c3aed;">0</h3>
-        <p>Kelas XI Reguler</p>
-      </div>
-      <div class="stat-card" style="border-left-color: #059669;">
-        <h3 id="stat-kelas-x-ink" style="color: #059669;">0</h3>
-        <p>Kelas X Inklusi</p>
-      </div>
-      <div class="stat-card" style="border-left-color: #d97706;">
-        <h3 id="stat-kelas-xi-ink" style="color: #d97706;">0</h3>
-        <p>Kelas XI Inklusi</p>
-      </div>
-    </div>
-
-    <!-- TABEL LOG MONITORING -->
-    <div class="table-responsive">
-      <table>
-        <thead>
-          <tr>
-            <th>Waktu Masuk</th>
-            <th>Kategori</th>
-            <th>Nama Siswa</th>
-            <th>Kelas</th>
-            <th>Ruang</th>
-            <th>Mata Pelajaran</th>
-            <th>Status Ujian</th>
-            <th>Status Kamera</th>
-          </tr>
-        </thead>
-        <tbody id="table-body">
-          <tr><td colspan="8" class="loading-info">Memuat data monitoring...</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <script>
-    // 4 LINK APPSCRIPT TERBARU
-    const URL_KELAS_X      = "https://script.google.com/macros/s/AKfycbz7IDkbDuKrdwhjvYmi2x5avfx3voNUOaPmFtU3112xeNZ6n61v_abKAmyLxlkIPjvT/exec";
-    const URL_KELAS_XI     = "https://script.google.com/macros/s/AKfycbzVVI1lQHXR9YohwEWD1tTvmtQ-UdSXH7tcEi95849zb5kNuPZbFOogdnVXfTLGgdR1/exec";
-    const URL_KELAS_X_INK  = "https://script.google.com/macros/s/AKfycbwED2KT8qEGQ-tloK8NUoD3pfwnEvgFqb-p8a8Hafrr06z2aGDvmwRFHSyuIMD89kBdWQ/exec";
-    const URL_KELAS_XI_INK = "https://script.google.com/macros/s/AKfycbyuEZ8LGBTPpXQSt-boaT8x591Q0upjLK_b0EhaBroVLicIHlUUaQBFiKhc4hdY0P_q/exec";
-
-    // Tarik data pertama kali saat halaman dibuka
-    window.onload = function() {
-      // SET DEFAULT INPUT TANGGAL KE TANGGAL HARI INI (YYYY-MM-DD)
-      const today = new Date();
-      const yyyy = today.getFullYear();
-      const mm = String(today.getMonth() + 1).padStart(2, '0');
-      const dd = String(today.getDate()).padStart(2, '0');
-      document.getElementById("filter-tanggal").value = `${yyyy}-${mm}-${dd}`;
-
-      muatDataMonitoring();
-    };
-
-    function muatDataMonitoring() {
-      const btnRefresh = document.getElementById("btn-refresh-data");
-      const tbody = document.getElementById("table-body");
+    var rows = sheetMonitoring.getDataRange().getValues();
+    var result = [];
+    
+    for (var m = 1; m < rows.length; m++) {
+      var rWaktuRaw = rows[m][0];
+      var rRuang = rows[m][3] ? cleanString(rows[m][3]) : "-";
+      var rKamera = rows[m][6] ? cleanString(rows[m][6]) : "-";
       
-      // Indikator Loading & Disable Tombol
-      btnRefresh.disabled = true;
-      btnRefresh.innerText = "⏳ Memuat...";
-      tbody.innerHTML = `<tr><td colspan="8" class="loading-info">Memuat data monitoring dari 4 database...</td></tr>`;
+      if (!rows[m][1]) continue; // Lewati jika nama kosong
 
-      const tingkat = document.getElementById("filter-tingkat").value;
-      const ruang = document.getElementById("filter-ruang").value;
-      const tanggal = document.getElementById("filter-tanggal").value;
-      const waktuMulai = document.getElementById("filter-waktu").value;
+      var waktuStr = "";
+      var jamMenitSiswa = ""; 
+      var tglSiswa = "";
 
-      const promises = [];
-
-      // 1. Tarik Kelas X Reguler
-      if (tingkat === "SEMUA" || tingkat === "X") {
-        promises.push(
-          fetch(`${URL_KELAS_X}?action=getMonitoring&ruang=${encodeURIComponent(ruang)}&tanggal=${encodeURIComponent(tanggal)}&waktuMulai=${encodeURIComponent(waktuMulai)}`)
-            .then(res => res.json())
-            .then(res => (res.data || []).map(item => ({ ...item, tingkat: "X" })))
-            .catch(() => [])
-        );
-      }
-
-      // 2. Tarik Kelas XI Reguler
-      if (tingkat === "SEMUA" || tingkat === "XI") {
-        promises.push(
-          fetch(`${URL_KELAS_XI}?action=getMonitoring&ruang=${encodeURIComponent(ruang)}&tanggal=${encodeURIComponent(tanggal)}&waktuMulai=${encodeURIComponent(waktuMulai)}`)
-            .then(res => res.json())
-            .then(res => (res.data || []).map(item => ({ ...item, tingkat: "XI" })))
-            .catch(() => [])
-        );
-      }
-
-      // 3. Tarik Kelas X Inklusi
-      if (tingkat === "SEMUA" || tingkat === "X_INK") {
-        promises.push(
-          fetch(`${URL_KELAS_X_INK}?action=getMonitoring&ruang=${encodeURIComponent(ruang)}&tanggal=${encodeURIComponent(tanggal)}&waktuMulai=${encodeURIComponent(waktuMulai)}`)
-            .then(res => res.json())
-            .then(res => (res.data || []).map(item => ({ ...item, tingkat: "X_INK" })))
-            .catch(() => [])
-        );
-      }
-
-      // 4. Tarik Kelas XI Inklusi
-      if (tingkat === "SEMUA" || tingkat === "XI_INK") {
-        promises.push(
-          fetch(`${URL_KELAS_XI_INK}?action=getMonitoring&ruang=${encodeURIComponent(ruang)}&tanggal=${encodeURIComponent(tanggal)}&waktuMulai=${encodeURIComponent(waktuMulai)}`)
-            .then(res => res.json())
-            .then(res => (res.data || []).map(item => ({ ...item, tingkat: "XI_INK" })))
-            .catch(() => [])
-        );
-      }
-
-      // Gabungkan hasil penarikan dari seluruh Apps Script
-      Promise.all(promises).then(results => {
-        let gabungan = [];
-        results.forEach(arr => { gabungan = gabungan.concat(arr); });
-
-        // Urutkan berdasarkan waktu masuk terbaru
-        gabungan.sort((a, b) => parseDateCustom(b.waktu) - parseDateCustom(a.waktu));
-
-        tampilkanData(gabungan);
-        
-        // Kembalikan status tombol
-        btnRefresh.disabled = false;
-        btnRefresh.innerText = "🔄 Refresh Data";
-      }).catch(() => {
-        btnRefresh.disabled = false;
-        btnRefresh.innerText = "🔄 Refresh Data";
-      });
-    }
-
-    // FUNGSI UTILITY: METODE KONVERSI TANGGAL FORMAT INDONESIA "dd/MM/yyyy HH:mm:ss"
-    function parseDateCustom(dateStr) {
-      if (!dateStr) return new Date(0);
-      var parts = dateStr.toString().split(" ");
-      if (parts.length === 2) {
-        var dateParts = parts[0].split("/");
-        var timeParts = parts[1].split(":");
-        if (dateParts.length === 3 && timeParts.length >= 2) {
-          return new Date(
-            parseInt(dateParts[2], 10),
-            parseInt(dateParts[1], 10) - 1,
-            parseInt(dateParts[0], 10),
-            parseInt(timeParts[0], 10),
-            parseInt(timeParts[1], 10),
-            timeParts[2] ? parseInt(timeParts[2], 10) : 0
-          );
+      if (rWaktuRaw instanceof Date) {
+        waktuStr = Utilities.formatDate(rWaktuRaw, "Asia/Jakarta", "dd/MM/yyyy HH:mm:ss");
+        jamMenitSiswa = Utilities.formatDate(rWaktuRaw, "Asia/Jakarta", "HH:mm");
+        tglSiswa = Utilities.formatDate(rWaktuRaw, "Asia/Jakarta", "dd/MM/yyyy");
+      } else {
+        waktuStr = rWaktuRaw ? cleanString(rWaktuRaw) : "";
+        var parts = waktuStr.split(" ");
+        if (parts.length > 0) tglSiswa = parts[0];
+        if (parts.length > 1) {
+          var timeParts = parts[1].split(":");
+          if (timeParts.length >= 2) {
+            jamMenitSiswa = ("0" + timeParts[0]).slice(-2) + ":" + ("0" + timeParts[1]).slice(-2);
+          }
         }
       }
-      var d = new Date(dateStr);
-      return isNaN(d.getTime()) ? new Date(0) : d;
-    }
-
-    function tampilkanData(data) {
-      const tbody = document.getElementById("table-body");
-      tbody.innerHTML = "";
-
-      let countX = 0;
-      let countXI = 0;
-      let countXInk = 0;
-      let countXIInk = 0;
-
-      if (data.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" class="empty-info">Belum ada aktivitas siswa untuk filter ini.</td></tr>`;
-      } else {
-        data.forEach(item => {
-          let badgeTingkat = "";
-          
-          if (item.tingkat === "X") {
-            countX++;
-            badgeTingkat = `<span class="badge-tingkat badge-x">Kelas X</span>`;
-          } else if (item.tingkat === "XI") {
-            countXI++;
-            badgeTingkat = `<span class="badge-tingkat badge-xi">Kelas XI</span>`;
-          } else if (item.tingkat === "X_INK") {
-            countXInk++;
-            badgeTingkat = `<span class="badge-tingkat badge-x-ink">X Inklusi</span>`;
-          } else if (item.tingkat === "XI_INK") {
-            countXIInk++;
-            badgeTingkat = `<span class="badge-tingkat badge-xi-ink">XI Inklusi</span>`;
-          }
-
-          // Format Tampilan Status Kamera
-          let kameraStr = item.kamera || "KAMERA DITOLAK / ERROR";
-          let badgeKamera = "";
-          if (kameraStr.includes("AKTIF") || kameraStr.includes("ON")) {
-            badgeKamera = `<span class="badge-kamera-on">📷 AKTIF</span>`;
-          } else {
-            badgeKamera = `<span class="badge-kamera-off">🚫 NONAKTIF / BLOK</span>`;
-          }
-
-          const tr = document.createElement("tr");
-          tr.innerHTML = `
-            <td>${item.waktu}</td>
-            <td>${badgeTingkat}</td>
-            <td><strong>${item.nama}</strong></td>
-            <td>${item.kelas}</td>
-            <td>${item.ruang}</td>
-            <td>${item.mapel ? item.mapel.replace(/_/g, ' ') : '-'}</td>
-            <td><span class="badge-status">✅ ${item.status}</span></td>
-            <td>${badgeKamera}</td>
-          `;
-          tbody.appendChild(tr);
+      
+      // Normalisasi format tanggal tunggal seperti 3/9/2026 menjadi 03/09/2026
+      if (tglSiswa !== "") {
+        var dParts = tglSiswa.split("/");
+        if (dParts.length === 3) {
+          tglSiswa = ("0" + dParts[0]).slice(-2) + "/" + ("0" + dParts[1]).slice(-2) + "/" + dParts[2];
+        }
+      }
+      
+      var passRuang = (ruangFilter === "SEMUA" || rRuang === ruangFilter);
+      var passTanggal = (tglTargetStr === "" || tglSiswa === tglTargetStr);
+      var passWaktu = (waktuFilter === "" || jamMenitSiswa === "" || jamMenitSiswa >= waktuFilter);
+      
+      if (passRuang && passTanggal && passWaktu) {
+        result.push({
+          waktu: waktuStr,
+          nama: rows[m][1],
+          kelas: rows[m][2],
+          ruang: rows[m][3],
+          mapel: rows[m][4],
+          status: rows[m][5],
+          kamera: rKamera
         });
       }
-
-      // Update Statistik & Jam Refresh
-      document.getElementById("stat-total").innerText = data.length;
-      document.getElementById("stat-kelas-x").innerText = countX;
-      document.getElementById("stat-kelas-xi").innerText = countXI;
-      document.getElementById("stat-kelas-x-ink").innerText = countXInk;
-      document.getElementById("stat-kelas-xi-ink").innerText = countXIInk;
-      
-      const now = new Date();
-      document.getElementById("last-update").innerText = "Terakhir Diperbarui: " + now.toLocaleTimeString('id-ID');
     }
-  </script>
-
-</body>
-</html>
+    
+    return responseJSON({ status: "success", data: result });
+  }
