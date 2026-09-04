@@ -189,7 +189,7 @@
     <div class="filter-card">
       <div class="form-group">
         <label>Tingkat Kelas</label>
-        <select id="filter-tingkat" class="form-control">
+        <select id="filter-tingkat" class="form-control" onchange="muatDataMonitoring()">
           <option value="SEMUA">Semua Kategori</option>
           <option value="X">Kelas X Reguler</option>
           <option value="XI">Kelas XI Reguler</option>
@@ -199,7 +199,7 @@
       </div>
       <div class="form-group">
         <label>Ruang Ujian</label>
-        <select id="filter-ruang" class="form-control">
+        <select id="filter-ruang" class="form-control" onchange="muatDataMonitoring()">
           <option value="SEMUA">Semua Ruang</option>
           <option value="Ruang 1">Ruang 1</option>
           <option value="Ruang 2">Ruang 2</option>
@@ -212,11 +212,11 @@
       </div>
       <div class="form-group">
         <label>Tanggal Ujian</label>
-        <input type="date" id="filter-tanggal" class="form-control">
+        <input type="date" id="filter-tanggal" class="form-control" onchange="muatDataMonitoring()">
       </div>
       <div class="form-group">
         <label>Jam Mulai Sesi Ujian</label>
-        <input type="time" id="filter-waktu" class="form-control">
+        <input type="time" id="filter-waktu" class="form-control" onchange="muatDataMonitoring()">
       </div>
       <div>
         <button class="btn-refresh" id="btn-refresh-data" onclick="muatDataMonitoring()">🔄 Refresh Data</button>
@@ -276,9 +276,8 @@
     const URL_KELAS_X_INK  = "https://script.google.com/macros/s/AKfycbwED2KT8qEGQ-tloK8NUoD3pfwnEvgFqb-p8a8Hafrr06z2aGDvmwRFHSyuIMD89kBdWQ/exec";
     const URL_KELAS_XI_INK = "https://script.google.com/macros/s/AKfycbyuEZ8LGBTPpXQSt-boaT8x591Q0upjLK_b0EhaBroVLicIHlUUaQBFiKhc4hdY0P_q/exec";
 
-    // Tarik data pertama kali saat halaman dibuka
     window.onload = function() {
-      // SET DEFAULT INPUT TANGGAL KE TANGGAL HARI INI (YYYY-MM-DD)
+      // Isikan tanggal default dengan Hari Ini (YYYY-MM-DD)
       const today = new Date();
       const yyyy = today.getFullYear();
       const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -292,58 +291,72 @@
       const btnRefresh = document.getElementById("btn-refresh-data");
       const tbody = document.getElementById("table-body");
       
-      // Indikator Loading & Disable Tombol
       btnRefresh.disabled = true;
       btnRefresh.innerText = "⏳ Memuat...";
       tbody.innerHTML = `<tr><td colspan="8" class="loading-info">Memuat data monitoring dari 4 database...</td></tr>`;
 
       const tingkat = document.getElementById("filter-tingkat").value;
       const ruang = document.getElementById("filter-ruang").value;
-      const rawTanggal = document.getElementById("filter-tanggal").value; // Format: YYYY-MM-DD
-      const waktuMulai = document.getElementById("filter-waktu").value;
-
-      // Konversi YYYY-MM-DD ke DD/MM/YYYY agar cocok dengan pemrosesan Apps Script
-      let tanggalFormatted = "";
-      if (rawTanggal) {
-        const parts = rawTanggal.split("-");
-        if (parts.length === 3) {
-          tanggalFormatted = `${parts[2]}/${parts[1]}/${parts[0]}`;
-        }
-      }
+      const filterTanggal = document.getElementById("filter-tanggal").value; // Format: YYYY-MM-DD
+      const filterWaktu = document.getElementById("filter-waktu").value;     // Format: HH:MM
 
       const promises = [];
 
-      // Helper function fetch untuk menghindari penulisan ulang
       const fetchDatabase = (url, kategori) => {
-        return fetch(`${url}?action=getMonitoring&ruang=${encodeURIComponent(ruang)}&tanggal=${encodeURIComponent(tanggalFormatted)}&waktuMulai=${encodeURIComponent(waktuMulai)}`)
+        // Ambil data tanpa memfilter tanggal di backend agar tidak ada bentrok format
+        return fetch(`${url}?action=getMonitoring&ruang=${encodeURIComponent(ruang)}`)
           .then(res => res.json())
           .then(res => (res.data || []).map(item => ({ ...item, tingkat: kategori })))
           .catch(() => []);
       };
 
-      // 1. Tarik Kelas X Reguler
       if (tingkat === "SEMUA" || tingkat === "X") promises.push(fetchDatabase(URL_KELAS_X, "X"));
-
-      // 2. Tarik Kelas XI Reguler
       if (tingkat === "SEMUA" || tingkat === "XI") promises.push(fetchDatabase(URL_KELAS_XI, "XI"));
-
-      // 3. Tarik Kelas X Inklusi
       if (tingkat === "SEMUA" || tingkat === "X_INK") promises.push(fetchDatabase(URL_KELAS_X_INK, "X_INK"));
-
-      // 4. Tarik Kelas XI Inklusi
       if (tingkat === "SEMUA" || tingkat === "XI_INK") promises.push(fetchDatabase(URL_KELAS_XI_INK, "XI_INK"));
 
-      // Gabungkan hasil penarikan dari seluruh Apps Script
       Promise.all(promises).then(results => {
         let gabungan = [];
         results.forEach(arr => { gabungan = gabungan.concat(arr); });
 
-        // Urutkan berdasarkan waktu masuk terbaru
-        gabungan.sort((a, b) => parseDateCustom(b.waktu) - parseDateCustom(a.waktu));
+        // Filter ketat di sisi Client (Frontend JavaScript)
+        let filteredData = gabungan.filter(item => {
+          if (!item.waktu) return false;
 
-        tampilkanData(gabungan);
+          const objDate = parseDateCustom(item.waktu);
+          if (isNaN(objDate.getTime())) return false;
+
+          // 1. FILTER TANGGAL (Cocokkan YYYY-MM-DD)
+          if (filterTanggal !== "") {
+            const itemYear = objDate.getFullYear();
+            const itemMonth = String(objDate.getMonth() + 1).padStart(2, '0');
+            const itemDay = String(objDate.getDate()).padStart(2, '0');
+            const itemFormattedDate = `${itemYear}-${itemMonth}-${itemDay}`;
+
+            if (itemFormattedDate !== filterTanggal) {
+              return false;
+            }
+          }
+
+          // 2. FILTER JAM MULAI (Minimal Jam:Menit)
+          if (filterWaktu !== "") {
+            const itemHours = String(objDate.getHours()).padStart(2, '0');
+            const itemMinutes = String(objDate.getMinutes()).padStart(2, '0');
+            const itemFormattedTime = `${itemHours}:${itemMinutes}`;
+
+            if (itemFormattedTime < filterWaktu) {
+              return false;
+            }
+          }
+
+          return true;
+        });
+
+        // Urutkan berdasarkan waktu masuk paling baru
+        filteredData.sort((a, b) => parseDateCustom(b.waktu) - parseDateCustom(a.waktu));
+
+        tampilkanData(filteredData);
         
-        // Kembalikan status tombol
         btnRefresh.disabled = false;
         btnRefresh.innerText = "🔄 Refresh Data";
       }).catch(() => {
@@ -352,24 +365,49 @@
       });
     }
 
-    // FUNGSI UTILITY: METODE KONVERSI TANGGAL FORMAT INDONESIA "dd/MM/yyyy HH:mm:ss"
+    // KONVERSI STRING WAKTU KE OBJEK DATE BERBAGAI FORMAT
     function parseDateCustom(dateStr) {
       if (!dateStr) return new Date(0);
-      var parts = dateStr.toString().split(" ");
+
+      var parts = dateStr.toString().trim().split(" ");
       if (parts.length === 2) {
         var dateParts = parts[0].split("/");
         var timeParts = parts[1].split(":");
+
         if (dateParts.length === 3 && timeParts.length >= 2) {
+          var p0 = parseInt(dateParts[0], 10);
+          var p1 = parseInt(dateParts[1], 10);
+          var p2 = parseInt(dateParts[2], 10);
+
+          var day, month, year;
+
+          // Deteksi apakah format dd/MM/yyyy atau MM/dd/yyyy
+          if (p0 > 12) {
+            day = p0;
+            month = p1 - 1;
+            year = p2;
+          } else if (p1 > 12) {
+            month = p0 - 1;
+            day = p1;
+            year = p2;
+          } else {
+            // Default ke format Indonesia: dd/MM/yyyy
+            day = p0;
+            month = p1 - 1;
+            year = p2;
+          }
+
           return new Date(
-            parseInt(dateParts[2], 10),
-            parseInt(dateParts[1], 10) - 1,
-            parseInt(dateParts[0], 10),
+            year,
+            month,
+            day,
             parseInt(timeParts[0], 10),
             parseInt(timeParts[1], 10),
             timeParts[2] ? parseInt(timeParts[2], 10) : 0
           );
         }
       }
+
       var d = new Date(dateStr);
       return isNaN(d.getTime()) ? new Date(0) : d;
     }
@@ -403,7 +441,6 @@
             badgeTingkat = `<span class="badge-tingkat badge-xi-ink">XI Inklusi</span>`;
           }
 
-          // Format Tampilan Status Kamera
           let kameraStr = item.kamera || "KAMERA DITOLAK / ERROR";
           let badgeKamera = "";
           if (kameraStr.includes("AKTIF") || kameraStr.includes("ON")) {
@@ -427,7 +464,6 @@
         });
       }
 
-      // Update Statistik & Jam Refresh
       document.getElementById("stat-total").innerText = data.length;
       document.getElementById("stat-kelas-x").innerText = countX;
       document.getElementById("stat-kelas-xi").innerText = countXI;
