@@ -371,7 +371,7 @@
         ["REKAPITULASI NILAI UJIAN - DIPSA EXAM CENTER"],
         [`MATA PELAJARAN: ${mapelClean.toUpperCase()} | ${labelTingkat} | TANGGAL: ${labelTanggal}`],
         [""],
-        ["No", "Waktu Selesai", "NIS", "Nama Siswa", "Kelas", "Mata Pelajaran", "Jawaban Siswa", "Nilai", "Catatan Pelanggaran"]
+        ["No", "Waktu Selesai", "NIS", "Nama Siswa", "Kelas", "Jawaban Siswa", "Nilai", "Catatan Pelanggaran"]
       ];
 
       currentDataNilai.forEach((item, index) => {
@@ -381,7 +381,6 @@
           item.nis || "-",
           item.nama,
           item.kelas,
-          item.mapel.replace(/_/g, ' '),
           item.jawaban || "-",
           item.nilai,
           item.pelanggaran
@@ -395,11 +394,10 @@
         { wch: 22 }, // Waktu Selesai
         { wch: 15 }, // NIS
         { wch: 32 }, // Nama Siswa
-        { wch: 15 }, // Kelas
-        { wch: 25 }, // Mata Pelajaran
-        { wch: 40 }, // Jawaban Siswa
+        { wch: 12 }, // Kelas
+        { wch: 45 }, // Jawaban Siswa
         { wch: 10 }, // Nilai
-        { wch: 25 }  // Catatan Pelanggaran
+        { wch: 30 }  // Catatan Pelanggaran
       ];
 
       const workbook = XLSX.utils.book_new();
