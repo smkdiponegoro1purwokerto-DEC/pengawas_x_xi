@@ -299,50 +299,39 @@
 
       const tingkat = document.getElementById("filter-tingkat").value;
       const ruang = document.getElementById("filter-ruang").value;
-      const tanggal = document.getElementById("filter-tanggal").value;
+      const rawTanggal = document.getElementById("filter-tanggal").value; // Format: YYYY-MM-DD
       const waktuMulai = document.getElementById("filter-waktu").value;
+
+      // Konversi YYYY-MM-DD ke DD/MM/YYYY agar cocok dengan pemrosesan Apps Script
+      let tanggalFormatted = "";
+      if (rawTanggal) {
+        const parts = rawTanggal.split("-");
+        if (parts.length === 3) {
+          tanggalFormatted = `${parts[2]}/${parts[1]}/${parts[0]}`;
+        }
+      }
 
       const promises = [];
 
+      // Helper function fetch untuk menghindari penulisan ulang
+      const fetchDatabase = (url, kategori) => {
+        return fetch(`${url}?action=getMonitoring&ruang=${encodeURIComponent(ruang)}&tanggal=${encodeURIComponent(tanggalFormatted)}&waktuMulai=${encodeURIComponent(waktuMulai)}`)
+          .then(res => res.json())
+          .then(res => (res.data || []).map(item => ({ ...item, tingkat: kategori })))
+          .catch(() => []);
+      };
+
       // 1. Tarik Kelas X Reguler
-      if (tingkat === "SEMUA" || tingkat === "X") {
-        promises.push(
-          fetch(`${URL_KELAS_X}?action=getMonitoring&ruang=${encodeURIComponent(ruang)}&tanggal=${encodeURIComponent(tanggal)}&waktuMulai=${encodeURIComponent(waktuMulai)}`)
-            .then(res => res.json())
-            .then(res => (res.data || []).map(item => ({ ...item, tingkat: "X" })))
-            .catch(() => [])
-        );
-      }
+      if (tingkat === "SEMUA" || tingkat === "X") promises.push(fetchDatabase(URL_KELAS_X, "X"));
 
       // 2. Tarik Kelas XI Reguler
-      if (tingkat === "SEMUA" || tingkat === "XI") {
-        promises.push(
-          fetch(`${URL_KELAS_XI}?action=getMonitoring&ruang=${encodeURIComponent(ruang)}&tanggal=${encodeURIComponent(tanggal)}&waktuMulai=${encodeURIComponent(waktuMulai)}`)
-            .then(res => res.json())
-            .then(res => (res.data || []).map(item => ({ ...item, tingkat: "XI" })))
-            .catch(() => [])
-        );
-      }
+      if (tingkat === "SEMUA" || tingkat === "XI") promises.push(fetchDatabase(URL_KELAS_XI, "XI"));
 
       // 3. Tarik Kelas X Inklusi
-      if (tingkat === "SEMUA" || tingkat === "X_INK") {
-        promises.push(
-          fetch(`${URL_KELAS_X_INK}?action=getMonitoring&ruang=${encodeURIComponent(ruang)}&tanggal=${encodeURIComponent(tanggal)}&waktuMulai=${encodeURIComponent(waktuMulai)}`)
-            .then(res => res.json())
-            .then(res => (res.data || []).map(item => ({ ...item, tingkat: "X_INK" })))
-            .catch(() => [])
-        );
-      }
+      if (tingkat === "SEMUA" || tingkat === "X_INK") promises.push(fetchDatabase(URL_KELAS_X_INK, "X_INK"));
 
       // 4. Tarik Kelas XI Inklusi
-      if (tingkat === "SEMUA" || tingkat === "XI_INK") {
-        promises.push(
-          fetch(`${URL_KELAS_XI_INK}?action=getMonitoring&ruang=${encodeURIComponent(ruang)}&tanggal=${encodeURIComponent(tanggal)}&waktuMulai=${encodeURIComponent(waktuMulai)}`)
-            .then(res => res.json())
-            .then(res => (res.data || []).map(item => ({ ...item, tingkat: "XI_INK" })))
-            .catch(() => [])
-        );
-      }
+      if (tingkat === "SEMUA" || tingkat === "XI_INK") promises.push(fetchDatabase(URL_KELAS_XI_INK, "XI_INK"));
 
       // Gabungkan hasil penarikan dari seluruh Apps Script
       Promise.all(promises).then(results => {
