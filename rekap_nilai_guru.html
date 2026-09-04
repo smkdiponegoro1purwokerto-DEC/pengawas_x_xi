@@ -9,7 +9,7 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
     body { background-color: #f4f6f9; color: #333; padding: 20px; }
-    .container { max-width: 1200px; margin: 0 auto; }
+    .container { max-width: 1280px; margin: 0 auto; }
     
     .card { background: #ffffff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
     .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eef2f5; padding-bottom: 15px; margin-bottom: 20px; }
@@ -52,13 +52,14 @@
     .filter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; align-items: end; margin-bottom: 20px; }
     
     .table-responsive { background: white; border-radius: 8px; overflow-x: auto; margin-top: 15px; }
-    table { width: 100%; border-collapse: collapse; font-size: 14px; text-align: left; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; text-align: left; }
     th { background: #f8fafc; color: #475569; padding: 12px 15px; border-bottom: 2px solid #e2e8f0; font-weight: 600; }
     td { padding: 12px 15px; border-bottom: 1px solid #f1f5f9; }
     tr:hover { background: #f8fafc; }
     
     .badge-nilai { font-weight: bold; color: #1a73e8; font-size: 15px; }
     .badge-warning { color: #dc3545; font-size: 12px; font-weight: bold; }
+    .badge-jawaban { font-family: monospace; background: #eef2f7; padding: 4px 8px; border-radius: 4px; color: #334155; font-size: 12px; display: inline-block; max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .screen { display: none; }
     .screen.active { display: block; }
   </style>
@@ -147,12 +148,13 @@
                 <th>NIS</th>
                 <th>Nama Siswa</th>
                 <th>Kelas</th>
+                <th>Jawaban Siswa</th>
                 <th>Nilai (0-100)</th>
                 <th>Catatan Pelanggaran</th>
               </tr>
             </thead>
             <tbody id="body-nilai">
-              <tr><td colspan="7" style="text-align:center; padding: 20px; color: #888;">Pilih Filter lalu klik 'Cari Nilai'.</td></tr>
+              <tr><td colspan="8" style="text-align:center; padding: 20px; color: #888;">Pilih Filter lalu klik 'Cari Nilai'.</td></tr>
             </tbody>
           </table>
         </div>
@@ -186,7 +188,6 @@
     let currentDataNilai = [];
 
     window.onload = function() {
-      // SET DEFAULT INPUT TANGGAL KE TANGGAL HARI INI (YYYY-MM-DD)
       const today = new Date();
       const yyyy = today.getFullYear();
       const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -277,12 +278,11 @@
     function tampilkanNilai() {
       const tingkat = document.getElementById("filter-tingkat").value;
       const mapel = document.getElementById("filter-mapel").value;
-      const tglFilter = document.getElementById("filter-tanggal").value; // Format: YYYY-MM-DD
+      const tglFilter = document.getElementById("filter-tanggal").value;
       const tbody = document.getElementById("body-nilai");
       const btnExport = document.getElementById("btn-export");
       const btnCari = document.getElementById("btn-cari");
 
-      // Konversi Format YYYY-MM-DD ke DD/MM/YYYY
       let tglTargetFormatted = "";
       if (tglFilter) {
         const parts = tglFilter.split("-");
@@ -292,7 +292,7 @@
       }
 
       btnCari.disabled = true;
-      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:20px; color:#1a73e8; font-weight:bold;">⏳ Mengambil data nilai...</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:20px; color:#1a73e8; font-weight:bold;">⏳ Mengambil data nilai...</td></tr>`;
       btnExport.style.display = "none";
 
       const url = `${ENDPOINTS[tingkat]}?action=getNilai&mapel=${encodeURIComponent(mapel)}`;
@@ -303,7 +303,6 @@
           btnCari.disabled = false;
           const rawData = res.data || [];
 
-          // PROSES FILTER BERDASARKAN TANGGAL UJIAN (DD/MM/YYYY)
           if (tglTargetFormatted !== "") {
             currentDataNilai = rawData.filter(item => {
               const tglItem = item.waktu ? item.waktu.split(" ")[0] : "";
@@ -316,7 +315,7 @@
           tbody.innerHTML = "";
 
           if (currentDataNilai.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:20px; color:#888;">Belum ada data nilai pada tanggal yang dipilih.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:20px; color:#888;">Belum ada data nilai pada tanggal yang dipilih.</td></tr>`;
             return;
           }
 
@@ -328,6 +327,7 @@
               <td>${item.nis || '-'}</td>
               <td><strong>${item.nama}</strong></td>
               <td>${item.kelas}</td>
+              <td><span class="badge-jawaban" title="${item.jawaban || '-'}">${item.jawaban || '-'}</span></td>
               <td><span class="badge-nilai">${item.nilai}</span></td>
               <td><span class="${item.pelanggaran !== 'Tidak Ada' && item.pelanggaran !== 'Selesai Normal' ? 'badge-warning' : ''}">${item.pelanggaran}</span></td>
             `;
@@ -338,7 +338,7 @@
         })
         .catch(() => {
           btnCari.disabled = false;
-          tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:20px; color:#dc3545;">Gagal mengambil data nilai!</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:20px; color:#dc3545;">Gagal mengambil data nilai!</td></tr>`;
         });
     }
 
@@ -361,7 +361,6 @@
         if (parts.length === 3) labelTanggal = `${parts[2]}/${parts[1]}/${parts[0]}`;
       }
 
-      // SUSUN KOP SURAT SESUAI SURAT RESMI LP MA'ARIF NU
       const sheetData = [
         ["LEMBAGA PENDIDIKAN MA'ARIF NU PCNU KAB. BANYUMAS"],
         ["SMK DIPONEGORO 1 PURWOKERTO"],
@@ -372,7 +371,7 @@
         ["REKAPITULASI NILAI UJIAN - DIPSA EXAM CENTER"],
         [`MATA PELAJARAN: ${mapelClean.toUpperCase()} | ${labelTingkat} | TANGGAL: ${labelTanggal}`],
         [""],
-        ["No", "Waktu Selesai", "NIS", "Nama Siswa", "Kelas", "Mata Pelajaran", "Nilai", "Catatan Pelanggaran"]
+        ["No", "Waktu Selesai", "NIS", "Nama Siswa", "Kelas", "Mata Pelajaran", "Jawaban Siswa", "Nilai", "Catatan Pelanggaran"]
       ];
 
       currentDataNilai.forEach((item, index) => {
@@ -383,6 +382,7 @@
           item.nama,
           item.kelas,
           item.mapel.replace(/_/g, ' '),
+          item.jawaban || "-",
           item.nilai,
           item.pelanggaran
         ]);
@@ -397,6 +397,7 @@
         { wch: 32 }, // Nama Siswa
         { wch: 15 }, // Kelas
         { wch: 25 }, // Mata Pelajaran
+        { wch: 40 }, // Jawaban Siswa
         { wch: 10 }, // Nilai
         { wch: 25 }  // Catatan Pelanggaran
       ];
