@@ -215,7 +215,7 @@
         <input type="date" id="filter-tanggal" class="form-control" onchange="muatDataMonitoring()">
       </div>
       <div class="form-group">
-        <label>Jam Mulai Sesi Ujian</label>
+        <label>Jam Mulai Sesi (Opsional)</label>
         <input type="time" id="filter-waktu" class="form-control" onchange="muatDataMonitoring()">
       </div>
       <div>
@@ -303,7 +303,6 @@
       const promises = [];
 
       const fetchDatabase = (url, kategori) => {
-        // Ambil data tanpa memfilter tanggal di backend agar tidak ada bentrok format
         return fetch(`${url}?action=getMonitoring&ruang=${encodeURIComponent(ruang)}`)
           .then(res => res.json())
           .then(res => (res.data || []).map(item => ({ ...item, tingkat: kategori })))
@@ -319,41 +318,51 @@
         let gabungan = [];
         results.forEach(arr => { gabungan = gabungan.concat(arr); });
 
-        // Filter ketat di sisi Client (Frontend JavaScript)
+        // Filter pintar di sisi Client
         let filteredData = gabungan.filter(item => {
           if (!item.waktu) return false;
 
-          const objDate = parseDateCustom(item.waktu);
-          if (isNaN(objDate.getTime())) return false;
+          const parsed = parseDateUniversal(item.waktu);
+          if (!parsed) return false;
 
-          // 1. FILTER TANGGAL (Cocokkan YYYY-MM-DD)
+          // 1. MATCH TANGGAL (Pasti Akurat)
           if (filterTanggal !== "") {
-            const itemYear = objDate.getFullYear();
-            const itemMonth = String(objDate.getMonth() + 1).padStart(2, '0');
-            const itemDay = String(objDate.getDate()).padStart(2, '0');
-            const itemFormattedDate = `${itemYear}-${itemMonth}-${itemDay}`;
+            const tParts = filterTanggal.split("-"); // [YYYY, MM, DD]
+            if (tParts.length === 3) {
+              const targetYear = parseInt(tParts[0], 10);
+              const targetMonth = parseInt(tParts[1], 10);
+              const targetDay = parseInt(tParts[2], 10);
 
-            if (itemFormattedDate !== filterTanggal) {
-              return false;
+              if (parsed.year !== targetYear || parsed.month !== targetMonth || parsed.day !== targetDay) {
+                return false;
+              }
             }
           }
 
-          // 2. FILTER JAM MULAI (Minimal Jam:Menit)
+          // 2. MATCH JAM MULAI (Batas Bawah Jam)
           if (filterWaktu !== "") {
-            const itemHours = String(objDate.getHours()).padStart(2, '0');
-            const itemMinutes = String(objDate.getMinutes()).padStart(2, '0');
-            const itemFormattedTime = `${itemHours}:${itemMinutes}`;
+            const wParts = filterWaktu.split(":");
+            if (wParts.length >= 2) {
+              const filterMin = parseInt(wParts[0], 10) * 60 + parseInt(wParts[1], 10);
+              const itemMin = parsed.hour * 60 + parsed.minute;
 
-            if (itemFormattedTime < filterWaktu) {
-              return false;
+              if (itemMin < filterMin) {
+                return false;
+              }
             }
           }
 
           return true;
         });
 
-        // Urutkan berdasarkan waktu masuk paling baru
-        filteredData.sort((a, b) => parseDateCustom(b.waktu) - parseDateCustom(a.waktu));
+        // Urutkan data berdasarkan waktu masuk terbaru
+        filteredData.sort((a, b) => {
+          const dA = parseDateUniversal(a.waktu);
+          const dB = parseDateUniversal(b.waktu);
+          if (!dA || !dB) return 0;
+          return new Date(dB.year, dB.month - 1, dB.day, dB.hour, dB.minute, dB.second) -
+                 new Date(dA.year, dA.month - 1, dA.day, dA.hour, dA.minute, dA.second);
+        });
 
         tampilkanData(filteredData);
         
@@ -365,51 +374,46 @@
       });
     }
 
-    // KONVERSI STRING WAKTU KE OBJEK DATE BERBAGAI FORMAT
-    function parseDateCustom(dateStr) {
-      if (!dateStr) return new Date(0);
+    // FUNGSI UTILITY PENGENAL TANGGAL SERBABISA (Mendukung MM/DD/YYYY & DD/MM/YYYY)
+    function parseDateUniversal(dateStr) {
+      if (!dateStr) return null;
 
       var parts = dateStr.toString().trim().split(" ");
-      if (parts.length === 2) {
-        var dateParts = parts[0].split("/");
+      if (parts.length < 1) return null;
+
+      var dateParts = parts[0].split("/");
+      if (dateParts.length !== 3) return null;
+
+      var p0 = parseInt(dateParts[0], 10);
+      var p1 = parseInt(dateParts[1], 10);
+      var p2 = parseInt(dateParts[2], 10);
+
+      var day, month, year;
+
+      // Logika Penentuan Format Tanggal Ujian
+      if (p0 > 12) {
+        // Berarti p0 adalah Tanggal (DD/MM/YYYY)
+        day = p0; month = p1; year = p2;
+      } else if (p1 > 12) {
+        // Berarti p1 adalah Tanggal (MM/DD/YYYY)
+        month = p0; day = p1; year = p2;
+      } else {
+        // Jika keduanya <= 12 (misal 03/09/2026 atau 09/03/2026),
+        // Kita prioritaskan p0 sebagai Bulan (MM/DD/YYYY) sesuai format Google Sheets standar
+        month = p0; day = p1; year = p2;
+      }
+
+      var hour = 0, minute = 0, second = 0;
+      if (parts.length >= 2) {
         var timeParts = parts[1].split(":");
-
-        if (dateParts.length === 3 && timeParts.length >= 2) {
-          var p0 = parseInt(dateParts[0], 10);
-          var p1 = parseInt(dateParts[1], 10);
-          var p2 = parseInt(dateParts[2], 10);
-
-          var day, month, year;
-
-          // Deteksi apakah format dd/MM/yyyy atau MM/dd/yyyy
-          if (p0 > 12) {
-            day = p0;
-            month = p1 - 1;
-            year = p2;
-          } else if (p1 > 12) {
-            month = p0 - 1;
-            day = p1;
-            year = p2;
-          } else {
-            // Default ke format Indonesia: dd/MM/yyyy
-            day = p0;
-            month = p1 - 1;
-            year = p2;
-          }
-
-          return new Date(
-            year,
-            month,
-            day,
-            parseInt(timeParts[0], 10),
-            parseInt(timeParts[1], 10),
-            timeParts[2] ? parseInt(timeParts[2], 10) : 0
-          );
+        if (timeParts.length >= 2) {
+          hour = parseInt(timeParts[0], 10);
+          minute = parseInt(timeParts[1], 10);
+          if (timeParts.length >= 3) second = parseInt(timeParts[2], 10);
         }
       }
 
-      var d = new Date(dateStr);
-      return isNaN(d.getTime()) ? new Date(0) : d;
+      return { year: year, month: month, day: day, hour: hour, minute: minute, second: second };
     }
 
     function tampilkanData(data) {
