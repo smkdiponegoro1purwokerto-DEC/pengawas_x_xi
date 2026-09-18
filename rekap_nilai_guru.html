@@ -116,8 +116,6 @@
             <select id="filter-tingkat" class="form-control" onchange="updateOpsiMapel()">
               <option value="X">Kelas X Reguler</option>
               <option value="XI">Kelas XI Reguler</option>
-              <option value="X_ALT">Kelas X (Alternatif)</option>
-              <option value="XI_ALT">Kelas XI (Alternatif)</option>
               <option value="X_INK">Kelas X Inklusi</option>
               <option value="XI_INK">Kelas XI Inklusi</option>
             </select>
@@ -170,11 +168,11 @@
     // URL DATABASE GURU
     const URL_GURU = "https://script.google.com/macros/s/AKfycbwApCwqUiWQS1ZfIA8iurd_3YA7gcJcKMLEsBcUvgW-GQjSPciI-XBHAzWhQUl_Xlh3/exec";
 
-    // 6 ENDPOINT DATABASE UJIAN
+    // 6 ENDPOINT DATABASE UJIAN (TERMASUK ALTERNATIF)
     const ENDPOINTS = {
-      "X": "https://script.google.com/macros/s/AKfycbz7IDkbDuKrdwhjvYmi2x5avfx3voNUOaPmFtU3112xeNZ6n61v_abKAmyLxlkIPjvT/exec",
-      "XI": "https://script.google.com/macros/s/AKfycbzVVI1lQHXR9YohwEWD1tTvmtQ-UdSXH7tcEi95849zb5kNuPZbFOogdnVXfTLGgdR1/exec",
+      "X_MAIN": "https://script.google.com/macros/s/AKfycbz7IDkbDuKrdwhjvYmi2x5avfx3voNUOaPmFtU3112xeNZ6n61v_abKAmyLxlkIPjvT/exec",
       "X_ALT": "https://script.google.com/macros/s/AKfycbyzA73250_eeBRrLhouW1UelNiNGpOKwVbfmG7niDyj65jQw71xCguOeuBvZR06tHxqYA/exec",
+      "XI_MAIN": "https://script.google.com/macros/s/AKfycbzVVI1lQHXR9YohwEWD1tTvmtQ-UdSXH7tcEi95849zb5kNuPZbFOogdnVXfTLGgdR1/exec",
       "XI_ALT": "https://script.google.com/macros/s/AKfycbw2_XO0kjpnPIWBWYXpd_LPNGt9xz7euPnXbk0SQuQVsqm4CCf7gawcToc3uGvSOU_5/exec",
       "X_INK": "https://script.google.com/macros/s/AKfycbwED2KT8qEGQ-tloK8NUoD3pfwnEvgFqb-p8a8Hafrr06z2aGDvmwRFHSyuIMD89kBdWQ/exec",
       "XI_INK": "https://script.google.com/macros/s/AKfycbyuEZ8LGBTPpXQSt-boaT8x591Q0upjLK_b0EhaBroVLicIHlUUaQBFiKhc4hdY0P_q/exec"
@@ -184,8 +182,6 @@
     const LIST_MAPEL = {
       "X": ["Bahasa_Indonesia", "PAI", "Informatika", "Matematika", "Sejarah", "Dasar_DKV", "Dasar_MP", "Dasar_TSM", "Bahasa_Inggris", "Penjasorkes", "Pancasila", "PIPAS", "Seni_Budaya", "KKA", "Basa_Jawa"],
       "XI": ["Bahasa_Indonesia", "PAI", "Matematika", "Sejarah", "Bahasa_Inggris", "Penjasorkes", "Pancasila", "Pilihan_DKV", "Sarprashumas_MP", "Kreativitas_Inovasi_dan_Kewirausahaan", "Basa_Jawa"],
-      "X_ALT": ["Bahasa_Indonesia", "PAI", "Informatika", "Matematika", "Sejarah", "Dasar_DKV", "Dasar_MP", "Dasar_TSM", "Bahasa_Inggris", "Penjasorkes", "Pancasila", "PIPAS", "Seni_Budaya", "KKA", "Basa_Jawa"],
-      "XI_ALT": ["Bahasa_Indonesia", "PAI", "Matematika", "Sejarah", "Bahasa_Inggris", "Penjasorkes", "Pancasila", "Pilihan_DKV", "Sarprashumas_MP", "Kreativitas_Inovasi_dan_Kewirausahaan", "Basa_Jawa"],
       "X_INK": ["Bahasa_Indonesia", "PAI", "Informatika", "Matematika", "Sejarah", "Dasar_DKV", "Dasar_MP", "Dasar_TSM", "Bahasa_Inggris", "Penjasorkes", "Pancasila", "PIPAS", "Seni_Budaya", "KKA", "Basa_Jawa"],
       "XI_INK": ["Bahasa_Indonesia", "PAI", "Matematika", "Sejarah", "Bahasa_Inggris", "Penjasorkes", "Pancasila", "Pilihan_DKV", "Sarprashumas_MP", "Kreativitas_Inovasi_dan_Kewirausahaan", "Basa_Jawa"]
     };
@@ -301,13 +297,29 @@
       tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:20px; color:#1a73e8; font-weight:bold;">⏳ Mengambil data nilai...</td></tr>`;
       btnExport.style.display = "none";
 
-      const url = `${ENDPOINTS[tingkat]}?action=getNilai&mapel=${encodeURIComponent(mapel)}`;
+      // LOGIKA MULTI-DATABASE DALAM 1 KATEGORI
+      let targetUrls = [];
+      if (tingkat === "X") {
+        targetUrls.push(`${ENDPOINTS["X_MAIN"]}?action=getNilai&mapel=${encodeURIComponent(mapel)}`);
+        targetUrls.push(`${ENDPOINTS["X_ALT"]}?action=getNilai&mapel=${encodeURIComponent(mapel)}`);
+      } else if (tingkat === "XI") {
+        targetUrls.push(`${ENDPOINTS["XI_MAIN"]}?action=getNilai&mapel=${encodeURIComponent(mapel)}`);
+        targetUrls.push(`${ENDPOINTS["XI_ALT"]}?action=getNilai&mapel=${encodeURIComponent(mapel)}`);
+      } else if (tingkat === "X_INK") {
+        targetUrls.push(`${ENDPOINTS["X_INK"]}?action=getNilai&mapel=${encodeURIComponent(mapel)}`);
+      } else if (tingkat === "XI_INK") {
+        targetUrls.push(`${ENDPOINTS["XI_INK"]}?action=getNilai&mapel=${encodeURIComponent(mapel)}`);
+      }
 
-      fetch(url)
-        .then(res => res.json())
-        .then(res => {
+      // AMBIL DATA DARI SEMUA TARGET URL TERSEBUT
+      Promise.all(targetUrls.map(url => fetch(url).then(res => res.json()).catch(() => ({ data: [] }))))
+        .then(results => {
           btnCari.disabled = false;
-          const rawData = res.data || [];
+          
+          let rawData = [];
+          results.forEach(res => {
+            if (res && res.data) rawData = rawData.concat(res.data);
+          });
 
           if (tglTargetFormatted !== "") {
             currentDataNilai = rawData.filter(item => {
@@ -358,8 +370,6 @@
       
       let labelTingkat = "KELAS X";
       if (tingkat === "XI") labelTingkat = "KELAS XI";
-      else if (tingkat === "X_ALT") labelTingkat = "KELAS X (ALTERNATIF)";
-      else if (tingkat === "XI_ALT") labelTingkat = "KELAS XI (ALTERNATIF)";
       else if (tingkat === "X_INK") labelTingkat = "KELAS X (INKLUSI)";
       else if (tingkat === "XI_INK") labelTingkat = "KELAS XI (INKLUSI)";
 
